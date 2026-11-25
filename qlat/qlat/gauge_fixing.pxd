@@ -23,8 +23,8 @@ cdef extern from "qlat/gauge-fixing.h" namespace "qlat":
 
     RealD gf_gauge_unitarity_error(const cc.GaugeField& gf) except +
 
-    GaugeFixingInfo gf_fix_gauge(cc.GaugeField& gf, const std_vector[Int]& dirs, const Int max_iter, const RealD eps, const RealD alpha, const Bool verbose) except +
+    GaugeFixingInfo gf_fix_gauge(cc.GaugeTransform& gt, const cc.GaugeField& gf, const std_vector[Int]& dirs, const Int max_iter, const RealD eps, const RealD alpha, const Bool verbose) except +
 
-    GaugeFixingInfo gf_fix_landau_gauge(cc.GaugeField& gf, const Int max_iter, const RealD eps, const RealD alpha, const Bool verbose) except +
+    GaugeFixingInfo gf_fix_landau_gauge(cc.GaugeTransform& gt, const cc.GaugeField& gf, const Int max_iter, const RealD eps, const RealD alpha, const Bool verbose) except +
 
-    GaugeFixingInfo gf_fix_coulomb_gauge(cc.GaugeField& gf, const Int max_iter, const RealD eps, const RealD alpha, const Bool verbose) except +
+    GaugeFixingInfo gf_fix_coulomb_gauge(cc.GaugeTransform& gt, const cc.GaugeField& gf, const Int max_iter, const RealD eps, const RealD alpha, const Bool verbose) except +

@@ -12,6 +12,11 @@ and the local update of one Jacobi sweep is ``g(x) = exp(alpha * D(x))`` with
 ``D(x)`` the anti-hermitian traceless part of the staple-sum matrix
 ``K(x) = sum_{mu in dirs} (U_mu(x) + U_mu(x-mu)^dagger)``, followed by\n
     U_mu(x) -> g(x) U_mu(x) g(x+mu)^dagger.\n
+The fix functions do **not** modify the input ``GaugeField``; they return the
+accumulated gauge transformation ``gt`` (with ``gt * gf`` the gauge-fixed
+field) together with the convergence-history dictionary.  ``gt`` is not unique:
+it depends on the convergence path and is defined only up to the residual
+stabiliser of the fixed field.\n
 The iteration stops when the RMS divergence ``theta`` is at most ``eps`` or
 after ``max_iter`` sweeps.\n
 Documentation: ``docs/qlat/qlat_gauge_fixing.md``\n
@@ -19,7 +24,7 @@ Documentation: ``docs/qlat/qlat_gauge_fixing.md``\n
 """
 
 from qlat_utils.all cimport *
-from .qcd cimport GaugeField
+from .qcd cimport GaugeField, GaugeTransform
 
 ### -------------------------------------------------------------------
 
@@ -48,20 +53,25 @@ def fix_gauge(
     Bool verbose=False,
 ):
     """
-    Plain local steepest-descent gauge fixing of ``gf`` in place with the link
-    directions ``dirs``.\n
-    Returns a dictionary with the convergence history: ``gauge``,
-    ``converged``, ``n_iter``, ``max_iter``, ``eps``, ``alpha``,
+    Plain local steepest-descent gauge fixing with the link directions
+    ``dirs``.\n
+    Does not modify ``gf``.  Returns ``(gt, info)`` where ``gt`` is a
+    :class:`~qlat.qcd.GaugeTransform` such that ``gt * gf`` is the gauge-fixed
+    field, and ``info`` is a dictionary with the convergence history:
+    ``gauge``, ``converged``, ``n_iter``, ``max_iter``, ``eps``, ``alpha``,
     ``functional``, ``divergence``, ``functional_list`` and
-    ``divergence_list``.
+    ``divergence_list``.\n
+    ``gt`` is not unique: it depends on the convergence path and is defined
+    only up to the residual stabiliser of the fixed field.
     """
     cdef std_vector[Int] c_dirs
     for mu in dirs:
         c_dirs.push_back(mu)
+    cdef GaugeTransform gt = GaugeTransform()
     cdef GaugeFixingInfo info = gf_fix_gauge(
-        gf.xxx().val(), c_dirs, max_iter, eps, alpha, verbose
+        gt.xxx().val(), gf.xxx().val(), c_dirs, max_iter, eps, alpha, verbose
     )
-    return _get_info_dict(info, "custom")
+    return gt, _get_info_dict(info, "custom")
 
 def fix_landau_gauge(
     GaugeField gf,
@@ -71,15 +81,19 @@ def fix_landau_gauge(
     Bool verbose=False,
 ):
     """
-    Plain local steepest-descent Landau gauge fixing of ``gf`` in place.\n
-    Maximizes the normalized functional summed over all four directions.  The
-    iteration stops when the RMS divergence is at most ``eps`` or after
-    ``max_iter`` sweeps.  Returns a dictionary with the convergence history.
+    Plain local steepest-descent Landau gauge fixing.\n
+    Maximizes the normalized functional summed over all four directions.  Does
+    not modify ``gf``; returns ``(gt, info)`` with ``gt * gf`` the fixed field.
+    The iteration stops when the RMS divergence is at most ``eps`` or after
+    ``max_iter`` sweeps.  ``info`` is the convergence-history dictionary.\n
+    ``gt`` is not unique: it depends on the convergence path and is defined
+    only up to the residual stabiliser of the fixed field.
     """
+    cdef GaugeTransform gt = GaugeTransform()
     cdef GaugeFixingInfo info = gf_fix_landau_gauge(
-        gf.xxx().val(), max_iter, eps, alpha, verbose
+        gt.xxx().val(), gf.xxx().val(), max_iter, eps, alpha, verbose
     )
-    return _get_info_dict(info, "landau")
+    return gt, _get_info_dict(info, "landau")
 
 def fix_coulomb_gauge(
     GaugeField gf,
@@ -89,18 +103,22 @@ def fix_coulomb_gauge(
     Bool verbose=False,
 ):
     """
-    Plain local steepest-descent Coulomb gauge fixing of ``gf`` in place.\n
+    Plain local steepest-descent Coulomb gauge fixing.\n
     Maximizes the normalized functional summed over the spatial directions,
     which splits into independent 3D Landau fixings per time slice; the
     resulting gauge transformation is still applied to all four link
-    directions.  The iteration stops when the RMS divergence is at most
-    ``eps`` or after ``max_iter`` sweeps.  Returns a dictionary with the
-    convergence history.
+    directions.  Does not modify ``gf``; returns ``(gt, info)`` with
+    ``gt * gf`` the fixed field.  The iteration stops when the RMS divergence
+    is at most ``eps`` or after ``max_iter`` sweeps.  ``info`` is the
+    convergence-history dictionary.\n
+    ``gt`` is not unique: it depends on the convergence path and is defined
+    only up to the residual stabiliser of the fixed field.
     """
+    cdef GaugeTransform gt = GaugeTransform()
     cdef GaugeFixingInfo info = gf_fix_coulomb_gauge(
-        gf.xxx().val(), max_iter, eps, alpha, verbose
+        gt.xxx().val(), gf.xxx().val(), max_iter, eps, alpha, verbose
     )
-    return _get_info_dict(info, "coulomb")
+    return gt, _get_info_dict(info, "coulomb")
 
 def get_gauge_functional(GaugeField gf, dirs):
     """

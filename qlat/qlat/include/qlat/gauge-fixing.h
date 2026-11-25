@@ -12,7 +12,7 @@ namespace qlat
 //
 //   F = sum_{x, mu in dirs} Re Tr U_mu(x) / (V * len(dirs) * 3)
 //
-// and the local update is
+// and the local update of one Jacobi sweep is
 //
 //   g(x) = exp(alpha * D(x))
 //
@@ -21,6 +21,15 @@ namespace qlat
 // ascent direction of the functional.  The gauge field is then updated by
 //
 //   U_mu(x) -> g(x) U_mu(x) g(x+mu)^dagger.
+//
+// The gauge-fixed field is NOT returned: the functions return the accumulated
+// gauge transformation `gt` instead, and leave the input field unmodified.
+// On output `gt * gf` is the gauge-fixed field, i.e.
+//
+//   (gt * gf)_mu(x) = gt(x) gf_mu(x) gt(x+mu)^dagger
+//
+// (see `gf_apply_gauge_transformation`).  `gt` is initialised by the callee, so
+// the caller may pass an uninitialised `GaugeTransform`.
 //
 // One sweep is a Jacobi sweep over all sites.  The loop stops when the RMS
 // divergence theta (which vanishes exactly in the gauge) is at most eps or
@@ -56,16 +65,24 @@ RealD gf_gauge_divergence(const GaugeField& gf, const std::vector<Int>& dirs);
 // Maximal |(U U^dagger - 1)_{ij}| over all links and sites.
 RealD gf_gauge_unitarity_error(const GaugeField& gf);
 
-GaugeFixingInfo gf_fix_gauge(GaugeField& gf, const std::vector<Int>& dirs,
-                             const Int max_iter, const RealD eps,
-                             const RealD alpha, const bool verbose);
+// Gauge-fix `gf` into the gauge transformation `gt`, leaving `gf` unmodified.
+// `gt * gf` is the gauge-fixed field.  `gt` is initialised by the callee.
+// `gt` is not unique: it depends on the convergence path and is defined only up
+// to the residual stabiliser of the fixed field.
+GaugeFixingInfo gf_fix_gauge(GaugeTransform& gt, const GaugeField& gf,
+                             const std::vector<Int>& dirs,
+                             const Int max_iter = 10000,
+                             const RealD eps = 1e-10, const RealD alpha = 0.1,
+                             const bool verbose = false);
 
-GaugeFixingInfo gf_fix_landau_gauge(GaugeField& gf, const Int max_iter = 10000,
+GaugeFixingInfo gf_fix_landau_gauge(GaugeTransform& gt, const GaugeField& gf,
+                                    const Int max_iter = 10000,
                                     const RealD eps = 1e-10,
                                     const RealD alpha = 0.1,
                                     const bool verbose = false);
 
-GaugeFixingInfo gf_fix_coulomb_gauge(GaugeField& gf, const Int max_iter = 10000,
+GaugeFixingInfo gf_fix_coulomb_gauge(GaugeTransform& gt, const GaugeField& gf,
+                                     const Int max_iter = 10000,
                                      const RealD eps = 1e-10,
                                      const RealD alpha = 0.1,
                                      const bool verbose = false);

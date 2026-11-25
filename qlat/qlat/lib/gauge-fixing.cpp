@@ -162,9 +162,10 @@ RealD gf_gauge_unitarity_error(const GaugeField& gf)
   return field_glb_max(f)[0];
 }
 
-GaugeFixingInfo gf_fix_gauge(GaugeField& gf, const std::vector<Int>& dirs,
-                             const Int max_iter, const RealD eps,
-                             const RealD alpha, const bool verbose)
+GaugeFixingInfo gf_fix_gauge(GaugeTransform& gt, const GaugeField& gf,
+                             const std::vector<Int>& dirs, const Int max_iter,
+                             const RealD eps, const RealD alpha,
+                             const bool verbose)
 {
   TIMER("gf_fix_gauge");
   Qassert(gf.initialized);
@@ -174,12 +175,22 @@ GaugeFixingInfo gf_fix_gauge(GaugeField& gf, const std::vector<Int>& dirs,
   }
   const Geometry& geo = gf.geo();
   const Geometry geo_expanded = get_expanded_geometry(geo);
+  // The expanded field is the running configuration; the const input `gf` is
+  // only read once, when seeding the compact region below.
   GaugeField gfe;
   gfe.init(geo_expanded);
+  gfe = gf;
+  refresh_expanded(gfe);
+  // Accumulated gauge transformation: (gt * gf) is the gauge-fixed field.
+  gt.init(geo);
+  set_unit(gt);
   Field<ColorMatrix> D;
-  D.init(geo, 1);
-  Field<ColorMatrix> g;
-  g.init(geo, 1);
+  // `D` must be on the expanded geometry: gf_set_random_local_gradient() calls
+  // D.init(gf.geo(), 1) and its `gf` argument is now the expanded `gfe`, so a
+  // compact `D` would trip Field::init's compact -> expanded Qassert.
+  D.init(geo_expanded, 1);
+  GaugeTransform gt_step;
+  gt_step.init(geo);
   Field<ColorMatrix> ge;
   ge.init(geo_expanded, 1);
   GaugeFixingInfo info;
@@ -191,11 +202,11 @@ GaugeFixingInfo gf_fix_gauge(GaugeField& gf, const std::vector<Int>& dirs,
   info.functional = 0.0;
   info.divergence = 0.0;
   for (Int n_iter = 1; n_iter <= max_iter; ++n_iter) {
-    gfe = gf;
-    refresh_expanded(gfe);
-    gf_set_random_local_gradient(D, gf, gfe, dirs);
+    // The halo of `gfe` is valid here: refreshed before the loop for sweep 1,
+    // at the bottom of the loop body for the following sweeps.
+    gf_set_random_local_gradient(D, gfe, gfe, dirs);
     const RealD divergence = gf_gauge_divergence_from_gradient(D);
-    const RealD functional = gf_gauge_functional(gf, dirs);
+    const RealD functional = gf_gauge_functional(gfe, dirs);
     info.functional_list.push_back(functional);
     info.divergence_list.push_back(divergence);
     info.n_iter = n_iter;
@@ -210,35 +221,41 @@ GaugeFixingInfo gf_fix_gauge(GaugeField& gf, const std::vector<Int>& dirs,
       break;
     }
     qacc_for(index, geo.local_volume(), {
-      const Geometry& geo = gf.geo();
+      const Geometry& geo = gfe.geo();
       const Coordinate xl = geo.coordinate_from_index(index);
       const ColorMatrix h = (alpha * D.get_elem(xl));
-      g.get_elem(xl) = make_matrix_exp(h, exp_order);
+      gt_step.get_elem(xl) = make_matrix_exp(h, exp_order);
     });
-    ge = g;
+    // gt <- gt_step * gt (so that gt is the transform of all sweeps so far).
+    gt_apply_gauge_transformation(gt, gt_step);
+    ge = gt_step;
     refresh_expanded(ge);
-    gf_update_gauge_field(gf, g, ge);
+    gf_update_gauge_field(gfe, gt_step, ge);
+    // The halo of `gfe` went stale in the update above (compact region only).
+    refresh_expanded(gfe);
   }
-  gf_gauge_gradient(D, gf, dirs);
-  info.functional = gf_gauge_functional(gf, dirs);
+  // Final info is computed on the working field, reusing `D`: no extra
+  // expanded copy is allocated (gf_gauge_gradient() would allocate its own).
+  gf_set_random_local_gradient(D, gfe, gfe, dirs);
+  info.functional = gf_gauge_functional(gfe, dirs);
   info.divergence = gf_gauge_divergence_from_gradient(D);
   return info;
 }
 
-GaugeFixingInfo gf_fix_landau_gauge(GaugeField& gf, const Int max_iter,
-                                    const RealD eps, const RealD alpha,
-                                    const bool verbose)
+GaugeFixingInfo gf_fix_landau_gauge(GaugeTransform& gt, const GaugeField& gf,
+                                    const Int max_iter, const RealD eps,
+                                    const RealD alpha, const bool verbose)
 {
   const std::vector<Int> dirs = {0, 1, 2, 3};
-  return gf_fix_gauge(gf, dirs, max_iter, eps, alpha, verbose);
+  return gf_fix_gauge(gt, gf, dirs, max_iter, eps, alpha, verbose);
 }
 
-GaugeFixingInfo gf_fix_coulomb_gauge(GaugeField& gf, const Int max_iter,
-                                     const RealD eps, const RealD alpha,
-                                     const bool verbose)
+GaugeFixingInfo gf_fix_coulomb_gauge(GaugeTransform& gt, const GaugeField& gf,
+                                     const Int max_iter, const RealD eps,
+                                     const RealD alpha, const bool verbose)
 {
   const std::vector<Int> dirs = {1, 2, 3};
-  return gf_fix_gauge(gf, dirs, max_iter, eps, alpha, verbose);
+  return gf_fix_gauge(gt, gf, dirs, max_iter, eps, alpha, verbose);
 }
 
 }  // namespace qlat
