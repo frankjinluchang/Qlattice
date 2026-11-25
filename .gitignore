@@ -19,7 +19,7 @@
 /applications/hmc-pions/results/
 /examples-py/.ipynb_checkpoints/
 /output_data/
-/result*
+/result-py-local*
 /tmp
 __pycache__
 .codex
