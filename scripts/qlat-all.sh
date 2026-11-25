@@ -3,7 +3,7 @@
 source qcore/set-prefix.sh
 
 time {
-for subdir in qlat-utils qlat qlat-grid qlat-cps ; do
+for subdir in qlat-utils qlat qlat-ref qlat-grid qlat-cps ; do
     ./scripts/"$subdir".sh
     if [ -f "$prefix/$subdir/build-successfully.txt" ] ; then
         echo "$subdir build successfully."

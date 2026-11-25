@@ -35,6 +35,11 @@ source qcore/set-prefix.sh $name
     time-run pip3 install $opts qlat-utils
     time-run python3 -m build -ns -o "$build" "$wd"/qlat
     time-run pip3 install $opts qlat
+    # qlat-ref is pure Python (numpy only) and is not published on PyPI, so it
+    # is built from this checkout.  Keeping it here as well as in
+    # scripts/qlat-ref.sh keeps the wheel flow in sync with `./build.sh`.
+    time-run python3 -m build -ns -o "$build" "$wd"/qlat-ref
+    time-run pip3 install $opts qlat-ref
     if [ -n "$(find-library.sh libcps.a)" ] ; then
         time-run python3 -m build -ns -o "$build" "$wd"/qlat-cps
         time-run pip3 install $opts qlat-cps

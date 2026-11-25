@@ -26,6 +26,7 @@ source ./scripts/cps-optional-functions.sh
 
     ./scripts/qlat-utils.sh
     ./scripts/qlat.sh
+    ./scripts/qlat-ref.sh
     # The plain `default` flow does not build Grid (only `default-gpt` does), so
     # `grid-config` is legitimately absent here.  qlat-grid.sh fails loudly now
     # that it has `set -o pipefail`, so skip it explicitly instead of failing

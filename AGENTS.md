@@ -18,6 +18,11 @@ Python/C++ packages:
 - `qlat-grid` — Grid framework interface.
 - `qlat-cps` — CPS framework interface.
 
+A fifth package, `qlat-ref`, holds the pure-NumPy reference implementations
+(`qlat_ref`) used to cross-check `qlat`; it is packaged the same way but has no
+C/Cython code, and its tests are a stdlib `unittest` suite instead of the
+log-comparison examples (see "Test qlat-ref" below).
+
 `qlat` also installs the top-level `qlat_gpt` module (GPT interface), and it
 re-exports everything from `qlat_utils`, so `import qlat as q` is the usual
 entry point. The version is in `./VERSION`.
@@ -131,6 +136,43 @@ never edit reference logs to make a failing test pass.
 The script sets up the nix and nom caches (falling back to `<repo>/tmp/` when the user directories are not writable) and writes the test package to `$HOME/qlat-build/nix/tests/result` (`<repo>/tmp/qlat-build/nix/tests/result` when `$HOME` is not writable). `--group` may be repeated and combined with `-j`/`--cores`, and `./nixpkgs/build-many-qlat-pkgs.py --list-groups` shows every package set (`tests`, `core`, `all`, `cuda*`, `small`, ...).
 
 **DO NOT** use shell loops like `for test in ... ; do ./nixpkgs/run-one-example-py.py $test ; done` — this is incorrect and bypasses the proper test orchestration.
+
+### Test qlat-ref (pure-Python reference package)
+
+`qlat-ref/` is a **packaged** pure-Python package (`pname = qlat_ref`, only
+`numpy` required, built with `meson-python` like the other packages).  Its
+tests are a **standard-library `unittest` suite** in `qlat-ref/tests/`, not
+log-comparison tests, so they are not run by `run-one-example-*.py`.
+
+Installation:
+
+- **nix**: it is `pkgs-std-ucxless.qlat_ref` (also `pkgs-pypi.qlat_ref`, ...),
+  it is part of the `qlat-tests` and `qlat-jhub-env` package sets, and it is
+  therefore installed in the `./result-py-local` environment that
+  `install-py-local-kernel-with-nix.py` creates.  The derivation runs the
+  unittest suite in its install check via `unittestCheckHook`
+  (`unittestFlags = [ "-s" "tests" "-t" "." "-v" ]`), so a non-zero unittest
+  exit fails the nix build.
+- **`./scripts/` flow**: `./scripts/qlat-ref.sh` installs it into the
+  configured prefix (it is called by `build.default*.sh` and `qlat-all.sh`);
+  `./scripts/qlat-ref-test.sh` runs the suite.
+
+Run the tests directly (no nix build needed; this is the canonical command):
+
+```bash
+cd qlat-ref
+python3 -m unittest discover -s tests -t . -v
+```
+
+From the repository root the equivalent (the trailing `-t qlat-ref` makes
+`tests/` importable) is:
+
+```bash
+python3 -m unittest discover -s qlat-ref/tests -t qlat-ref -v
+```
+
+The historical `python3 -m qlat_ref.tests` entry point still works: it is a
+thin shim that discovers and runs the same suite.
 
 ### Run a new program with the nix-built environment
 
@@ -390,6 +432,7 @@ that contains math in headless chromium and reports the failing expressions.
 | `qlat/auto_contractor/` | Automatic contraction code generation |
 | `qlat/qlat_gpt.py` | GPT interface, installed as a top-level module |
 | `qlat-grid/`, `qlat-cps/` | Grid and CPS interface packages |
+| `qlat-ref/` | Pure-NumPy reference implementations (`qlat_ref`), a packaged dependency tested with stdlib `unittest` in `qlat-ref/tests/` |
 | `examples-py/` | Python test/example scripts — canonical reference; keep up to date |
 | `examples-py-gpt/` | Python examples using the GPT/Grid interface — canonical reference; keep up to date |
 | `examples-py-cps/` | Python examples using the CPS interface — canonical reference; keep up to date |

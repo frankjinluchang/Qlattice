@@ -8,7 +8,7 @@ source qcore/set-prefix.sh $name
     echo "!!!! build $name !!!!"
     source qcore/conf.sh ..
 
-    time-run pip3 uninstall -y qlat-utils qlat qlat-grid qlat-cps || true
+    time-run pip3 uninstall -y qlat-utils qlat qlat-ref qlat-grid qlat-cps || true
 
     echo "!!!! $name build !!!!"
     rm -rf "$temp_dir" || true

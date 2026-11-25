@@ -277,6 +277,13 @@ in let
       qlat = pypi-qlat;
       qlat-grid = pypi-qlat-grid;
       qlat-cps = pypi-qlat-cps;
+      # qlat-ref is NOT on PyPI and was added after the v1.20 tag, so there is
+      # no pypi tarball and no `qlat-ref/` in the tag that `git-src` fetches.
+      # The -pypi variant therefore builds qlat-ref from the working tree: it
+      # is pure NumPy with no compiled glue and no ABI coupling to the other
+      # packages, so mixing it into the PyPI env is safe. This keeps the eval
+      # of --group core/--group small (which include -pypi) working.
+      qlat-ref = ../qlat-ref;
       examples-cpp = "${git-src}/examples-cpp";
       examples-cpp-grid = "${git-src}/examples-cpp-grid";
       examples-py = "${git-src}/examples-py";
@@ -290,6 +297,7 @@ in let
       qlat = ../qlat;
       qlat-grid = ../qlat-grid;
       qlat-cps = ../qlat-cps;
+      qlat-ref = ../qlat-ref;
       examples-cpp = ../examples-cpp;
       examples-cpp-grid = ../examples-cpp-grid;
       examples-py = ../examples-py;
@@ -328,6 +336,11 @@ in let
       qlat-src = qlat-src;
       cudaSupport = opts.use-cuda;
       nvcc-arch = opts.nvcc-arch;
+      version = qlat-version;
+    };
+    qlat_ref = py-call-pkg ./qlat_ref.nix {
+      stdenv = qlat-stdenv;
+      qlat-src = qlat-src;
       version = qlat-version;
     };
     gpt-lehner = py-call-pkg ./gpt-lehner.nix {
@@ -407,22 +420,22 @@ in let
       inherit mpi cuba-quad qlat-eigen cps qmp qio grid-lehner;
     };
     qlat-py-pkgs = if ! opts.use-grid-gpt && ! opts.use-cps then {
-      inherit qlat_utils qlat;
+      inherit qlat_utils qlat qlat_ref;
     } else if opts.use-grid-gpt && ! opts.use-cps then {
-      inherit qlat_utils qlat qlat_grid gpt-lehner;
+      inherit qlat_utils qlat qlat_grid gpt-lehner qlat_ref;
     } else if ! opts.use-grid-gpt && opts.use-cps then {
-      inherit qlat_utils qlat qlat_cps;
+      inherit qlat_utils qlat qlat_cps qlat_ref;
     } else {
-      inherit qlat_utils qlat qlat_grid qlat_cps gpt-lehner qlat_docs qlat_pypipkgs;
+      inherit qlat_utils qlat qlat_grid qlat_cps gpt-lehner qlat_docs qlat_pypipkgs qlat_ref;
     };
     qlat-tests-pkgs = if ! opts.use-grid-gpt && ! opts.use-cps then {
-      inherit qlat-examples-cpp qlat-examples-py;
+      inherit qlat-examples-cpp qlat-examples-py qlat_ref;
     } else if opts.use-grid-gpt && ! opts.use-cps then {
-      inherit qlat-examples-cpp qlat-examples-cpp-grid qlat-examples-py qlat-examples-py-gpt;
+      inherit qlat-examples-cpp qlat-examples-cpp-grid qlat-examples-py qlat-examples-py-gpt qlat_ref;
     } else if ! opts.use-grid-gpt && opts.use-cps then {
-      inherit qlat-examples-cpp qlat-examples-py qlat-examples-py-cps;
+      inherit qlat-examples-cpp qlat-examples-py qlat-examples-py-cps qlat_ref;
     } else {
-      inherit qlat-examples-cpp qlat-examples-cpp-grid qlat-examples-py qlat-examples-py-gpt qlat-examples-py-cps;
+      inherit qlat-examples-cpp qlat-examples-cpp-grid qlat-examples-py qlat-examples-py-gpt qlat-examples-py-cps qlat_ref;
     };
     #
     qlat-py = python3.withPackages (ps: builtins.attrValues qlat-py-pkgs);
@@ -768,7 +781,7 @@ in let
     inherit python3 mpi openmp ucx-mt ucx-mt-dev;
     inherit c-lime qmp qio cps cuba-quad grid-lehner gpt-lehner;
     inherit qlat-src qlat-version;
-    inherit qlat_utils qlat qlat_grid qlat_cps;
+    inherit qlat_utils qlat qlat_grid qlat_cps qlat_ref;
     inherit qlat-examples-cpp qlat-examples-cpp-grid qlat-examples-py qlat-examples-py-gpt qlat-examples-py-cps;
     inherit qlat_docs qlat_pypipkgs;
     inherit qlat-py qlat-tests qlat-env qlat-sh qlat-fhs;

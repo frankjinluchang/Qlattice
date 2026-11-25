@@ -240,6 +240,13 @@ After the first complete install, one can re-install individual components by ru
 ./scripts/qlat.sh
 ```
 
+The pure-NumPy reference package `qlat-ref` is installed by its own script (it is also part of `build.default*.sh` and of `./scripts/qlat-all.sh`):
+
+```bash
+./scripts/qlat-ref.sh        # install qlat-ref into $prefix
+./scripts/qlat-ref-test.sh   # run its unittest suite
+```
+
 It is also possible to build `CPS`, `Grid`, and `GPT`. For examples:
 
 ```bash
@@ -295,3 +302,38 @@ There are example programs provided in the examples directory. Once the library 
 ./scripts/qlat-examples-py-cps.sh # require CPS and qlat-cps
 ./scripts/qlat-examples-cpp-grid.sh # require Grid and qlat-grid
 ```
+
+The `qlat-ref` reference package ships a standard-library `unittest` suite instead of log-comparison examples. Run it from the checkout (no install needed):
+
+```bash
+cd qlat-ref
+python3 -m unittest discover -s tests -t . -v
+```
+
+or through the install script, which runs the suite in the configured prefix:
+
+```bash
+./scripts/qlat-ref-test.sh
+```
+
+## Packages installed
+
+The `./scripts/` flow installs the following Python packages into `DEST_DIRECTORY`:
+
+| Package | Install script | Notes |
+|---|---|---|
+| `qlat-utils` | `./scripts/qlat-utils.sh` | C++/Cython core; `./scripts/qcore.sh` provides the compiler wrappers |
+| `qlat` | `./scripts/qlat.sh` | C++/Cython main library |
+| `qlat-grid` | `./scripts/qlat-grid.sh` | requires Grid |
+| `qlat-cps` | `./scripts/qlat-cps.sh` | requires CPS |
+| `qlat-ref` | `./scripts/qlat-ref.sh` | pure Python (`numpy` only); tests via `./scripts/qlat-ref-test.sh` |
+
+The example suites are run separately (`./scripts/qlat-examples-py.sh`,
+`-gpt`, `-cps`, `qlat-examples-cpp.sh`, `qlat-examples-cpp-grid.sh`, as listed
+above).
+
+With nix, the same packages are the attributes `qlat_utils`, `qlat`, `qlat_grid`,
+`qlat_cps` and `qlat_ref` of `nixpkgs/q-pkgs.nix`; `qlat_ref` is part of the
+`qlat-jhub-env` and `qlat-tests` package sets, so it is installed together with
+the rest in `./result-py-local`. Its nix derivation runs the unittest suite as an
+install check (`unittestCheckHook`), so a failing test fails the nix build.

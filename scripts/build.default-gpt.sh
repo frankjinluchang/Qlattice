@@ -37,6 +37,7 @@ source ./scripts/cps-optional-functions.sh
 
     ./scripts/qlat-utils.sh
     ./scripts/qlat.sh
+    ./scripts/qlat-ref.sh
     ./scripts/qlat-grid.sh
     cps_python_package_optional
 
