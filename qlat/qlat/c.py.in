@@ -250,6 +250,7 @@ __all__ += [
         'field_color_matrix_exp',
         'field_color_matrix_mul',
         'set_gm_force',
+        'gm_apply_gauge_transformation',
         'set_gm_force_dual',
         'project_gauge_transform',
         'set_gauge_transform_momentum',

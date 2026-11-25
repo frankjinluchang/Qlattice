@@ -583,6 +583,7 @@ cdef extern from "qlat/hmc.h" namespace "qlat":
     void field_color_matrix_exp(Field[ColorMatrix]& fc, const Field[ColorMatrix]& fc1, const ComplexD coef) except +
     void field_color_matrix_mul(Field[ColorMatrix]& fc, const Field[ColorMatrix]& fc1, const Field[ColorMatrix]& fc2) except +
     void set_gm_force(GaugeMomentum& gm_force, const GaugeField& gf, const GaugeAction& ga) except +
+    void gm_apply_gauge_transformation(GaugeMomentum& gm, const GaugeMomentum& gm0, const GaugeTransform& gt, const bool is_dagger) except +
     void set_gm_force_dual(GaugeMomentum& gm_force_dual, const GaugeField& gf, const GaugeMomentum& gm_force) except +
     RealD project_gauge_transform(GaugeMomentum& gm, GaugeMomentum& gm_dual, const Field[RealD]& mf, const Field[RealD]& mf_dual) except +
     void set_gauge_transform_momentum(GaugeMomentum& gm, GaugeMomentum& gm_dual, const Field[ColorMatrix]& gtm) except +

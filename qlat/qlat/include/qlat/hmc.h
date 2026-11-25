@@ -64,6 +64,16 @@ void field_color_matrix_mul(Field<ColorMatrix>& fc,
 void set_gm_force(GaugeMomentum& gm_force, const GaugeField& gf,
                   const GaugeAction& ga);
 
+void gm_apply_gauge_transformation(GaugeMomentum& gm, const GaugeMomentum& gm0,
+                                   const GaugeTransform& gt,
+                                   const bool is_dagger = false);
+// gm can be the same as gm0
+// gm[x, mu] <- gt[x] * gm0[x, mu] * gt[x]^dagger  (is_dagger:
+// gt[x]^dagger * gm0[x, mu] * gt[x])
+// No shift in mu and no communication: gf_evolve left-multiplies
+// exp(step_size * P) at the same site, so the momentum conjugates at x.
+// Do NOT use on a `_dual` momentum (right-multiplication, lives at x + mu).
+
 void set_gm_force_dual(GaugeMomentum& gm_force_dual, const GaugeField& gf,
                        const GaugeMomentum& gm_force);
 

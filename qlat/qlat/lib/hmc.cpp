@@ -489,6 +489,46 @@ void set_gm_force(GaugeMomentum& gm_force, const GaugeField& gf,
   qassert(gm_force.multiplicity == 4);
 }
 
+void gm_apply_gauge_transformation(GaugeMomentum& gm, const GaugeMomentum& gm0,
+                                   const GaugeTransform& gt,
+                                   const bool is_dagger)
+// gm can be the same as gm0
+// gm <- Ad_gt(gm0):  gm[x, mu] <- gt[x] * gm0[x, mu] * gt[x]^dagger
+//                    (is_dagger: gt[x]^dagger * gm0[x, mu] * gt[x])
+// The adjoint action is at the SAME site for all 4 mu, with no x + mu shift
+// and no communication: gf_evolve left-multiplies exp(step_size * P) at site
+// x, so covariance of U -> gt U gt^dagger needs P_mu(x) -> gt(x) P_mu(x)
+// gt(x)^dagger (the gt(x + mu) factors cancel inside exp(eps P) * U).
+// is_dagger is the inverse action and acts on the LEFT factor only.
+// This does NOT apply to a `_dual` momentum (gf_evolve_dual right-multiplies
+// and the dual momentum lives at x + mu).
+{
+  TIMER("gm_apply_gauge_transformation");
+  qassert(is_matching_geo(gm0.geo(), gt.geo()));
+  const Geometry& geo = gm0.geo();
+  gm.init(geo_resize(geo, 0));
+  qassert(is_matching_geo(gm.geo(), gm0.geo()));
+  qassert(gm.multiplicity == 4);
+  qassert(gm0.multiplicity == 4);
+  qacc_for(index, geo.local_volume(), {
+    const Geometry& geo = gm.geo();
+    const Coordinate xl = geo.coordinate_from_index(index);
+    const ColorMatrix t0 = gt.get_elem(xl);
+    const ColorMatrix t0_dag = matrix_adjoint(t0);
+    Vector<ColorMatrix> gm_v = gm.get_elems(xl);
+    const Vector<ColorMatrix> gm0_v = gm0.get_elems_const(xl);
+    qassert(gm_v.size() == 4);
+    qassert(gm0_v.size() == 4);
+    for (Int mu = 0; mu < 4; ++mu) {
+      if (is_dagger) {
+        gm_v[mu] = t0_dag * gm0_v[mu] * t0;
+      } else {
+        gm_v[mu] = t0 * gm0_v[mu] * t0_dag;
+      }
+    }
+  });
+}
+
 void set_gm_force_dual(GaugeMomentum& gm_force_dual, const GaugeField& gf,
                        const GaugeMomentum& gm_force)
 {

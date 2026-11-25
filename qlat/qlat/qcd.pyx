@@ -145,7 +145,12 @@ cdef class GaugeTransform(FieldColorMatrix):
 
     def __mul__(self, other):
         """
-        other can be GaugeTransform, GaugeField, Prop, SelProp, PselProp, list
+        other can be GaugeTransform, GaugeField, GaugeMomentum, Prop, SelProp,
+        PselProp, list
+        #
+        A ``GaugeMomentum`` is handled by its own ``__rmul__`` (not by a branch
+        here); an unsupported operand returns ``NotImplemented``, so Python
+        raises ``TypeError``.
         """
         cdef GaugeTransform gt, gt1
         cdef GaugeField gf, gf1
@@ -190,7 +195,7 @@ cdef class GaugeTransform(FieldColorMatrix):
         elif isinstance(other, list):
             return [ self * p for p in other ]
         else:
-            raise Exception("GaugeTransform.__mul__")
+            return NotImplemented
 
     def inv(self):
         cdef GaugeTransform gt_inv = GaugeTransform()
