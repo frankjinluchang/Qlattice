@@ -199,7 +199,7 @@ Project each matrix to SU(3) in place.
 
 ### Gauge Transformation Multiplication
 
-#### `__mul__(other) -> GaugeTransform | GaugeField | Prop | SelProp | PselProp | FermionField4d | list`
+#### `__mul__(other) -> GaugeTransform | GaugeField | GaugeMomentum | Prop | SelProp | PselProp | FermionField4d | list`
 
 Apply the gauge transformation to another object. The result type depends
 on the operand:
@@ -208,11 +208,39 @@ on the operand:
 |---|---|---|
 | `GaugeTransform` | `GaugeTransform` | Compose transformations: V * V' |
 | `GaugeField` | `GaugeField` | Transform gauge links: V * U |
+| `GaugeMomentum` | `GaugeMomentum` | Transform the HMC momentum: V * P (see below) |
 | `Prop` | `Prop` | Transform full propagator |
 | `SelProp` | `SelProp` | Transform selected-point propagator |
 | `PselProp` | `PselProp` | Transform point-selected propagator |
 | `FermionField4d` | `FermionField4d` | Transform fermion field |
 | `list` | `list` | Element-wise transformation |
+
+The `GaugeMomentum` case is dispatched differently from the others: a
+momentum is not a `qlat.qcd` type, so `GaugeTransform.__mul__` has no branch
+for it and returns `NotImplemented`, which lets `GaugeMomentum.__rmul__`
+handle the operation and call `q.gm_apply_gauge_transformation(gm, gt)`. The
+result is a **new** `GaugeMomentum`; `gm` is not modified. The equivalent
+explicit call is `q.gm_apply_gauge_transformation(gm, gt)`, and the inverse
+direction needs `is_dagger=True` there. An unsupported operand now raises
+`TypeError` (from `NotImplemented`), not a custom `Exception`.
+
+The momentum law is the adjoint action at the **same site** for all four
+directions, with no `x + mu` shift and no communication:
+
+$$
+P'_\mu(x) = V(x) P_\mu(x) V(x)^\dagger
+\tag{1}
+$$
+
+This differs from the link law of the `GaugeField` case, where the
+`V(x+\mu)^\dagger` factor is present. The reason is qlat's MD update, which
+left-multiplies the exponential at the same site, so the `V(x+\mu)` factors
+cancel inside the product. The transform preserves the anti-Hermitian and
+traceless property of the momentum and commutes with one leapfrog kick, so it
+can be used to transform a `(gf, gm)` pair before an HMC trajectory. It does
+**not** apply to a `_dual` momentum, whose update right-multiplies and whose
+entries live at `x + mu`. See `docs/qlat/qlat_hmc.md` for the momentum
+conventions and for `q.gm_apply_gauge_transformation`.
 
 ---
 

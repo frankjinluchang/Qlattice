@@ -149,7 +149,8 @@ tests = \
 		docs-lat_data.log \
 		docs-qlat_scripts_gen_data.log \
 		docs-qlat_scripts_load_data.log \
-		gauge-fixing.log
+		gauge-fixing.log \
+		hmc-gauge-commute.log
 
 all: run
 

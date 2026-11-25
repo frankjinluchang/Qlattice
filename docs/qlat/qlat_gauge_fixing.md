@@ -88,43 +88,113 @@ per-sweep functional and divergence history.
 
 ## Python API
 
-All functions take a `qlat.GaugeField` (distributed field) and update it in
-place, except the getters:
+All three fixing functions leave their input `qlat.GaugeField` **untouched**
+and return a tuple `(gt, info)`: `gt` is a `qlat.GaugeTransform` and the
+gauge-fixed field is the new field `gt * gf`.  The getters are read-only:
 
 - `q.fix_gauge(gf, dirs, max_iter=10000, eps=1e-10, alpha=0.1, verbose=False)`
-  — fix with an explicit list of link directions.
+  — fix with an explicit list of link directions; returns `(gt, info)`.
 - `q.fix_landau_gauge(gf, max_iter=10000, eps=1e-10, alpha=0.1, verbose=False)`
-  — Landau gauge fixing (all four directions).
+  — Landau gauge fixing (all four directions); returns `(gt, info)`.
 - `q.fix_coulomb_gauge(gf, max_iter=10000, eps=1e-10, alpha=0.1, verbose=False)`
-  — Coulomb gauge fixing (spatial directions, per time slice).
+  — Coulomb gauge fixing (spatial directions, per time slice); returns
+  `(gt, info)`.
 - `q.get_gauge_functional(gf, dirs)` — normalized gauge functional.
 - `q.get_gauge_divergence(gf, dirs)` — RMS divergence `theta`.
 - `q.get_unitarity_error(gf)` — maximal `|U U^dagger - 1|` matrix element.
 
-The `fix_*` functions return a dictionary with the keys `gauge`, `converged`,
-`n_iter`, `max_iter`, `eps`, `alpha`, `functional`, `divergence`,
-`functional_list` and `divergence_list`.
+The returned `gt` acts on the left exactly as in [Eq. (5)](#algorithm), so
+`gt * gf` allocates a new `GaugeField` and the caller keeps the original.  In
+place into a destination field: `gf_dest @= gt * gf`.
+
+The `info` dictionary has the keys `gauge`, `converged`, `n_iter`, `max_iter`,
+`eps`, `alpha`, `functional`, `divergence`, `functional_list` and
+`divergence_list`; `functional` and `divergence` describe the field
+`gt * gf`.
+
+### The returned transform is not unique
+
+`gt` depends on the convergence path and is only defined up to the residual
+stabiliser of the gauge condition: multiplying `gt` by a global third root of
+unity times the identity gives a different `gt` for a bit-identical fixed
+field.  Code that needs to compare two implementations must therefore compare
+the **applied** fixed fields `gt * gf`, never the raw `gt` arrays.
 
 ## MPI and Performance
 
 The gauge field is distributed over the `qlat` geometry.  Each sweep only
 needs the neighbouring links at the node boundaries: the implementation keeps
-an expanded one-hop copy of the gauge field and refreshes it with
-`refresh_expanded` (whose `CommPlan` is cached by qlat) once per sweep, and
-the same is done for the local transformation.  The functional, the divergence
-and the unitarity error are reduced with `field_glb_sum`/`field_glb_max`, so
-all nodes stay in sync.  Site loops are in C++ (`qacc_for`); there is no
-Python loop over sites.
+one expanded one-hop working copy of the gauge field (seeded once from the
+input, `refresh_expanded` with the cached `CommPlan` once per sweep), a compact
+`gt` that is distributed like `gf`, an expanded gradient `D`, and a compact
+per-sweep step `gt_step`.  The functional, the divergence and the unitarity
+error are reduced with `field_glb_sum`/`field_glb_max`, so all nodes stay in
+sync.  Site loops are in C++ (`qacc_for`); there is no Python loop over sites.
+
+Peak memory is the working copy plus `gt` plus `D`'s halo: at `64^3 * 128`
+that is **+5.012 GiB** over the previous implementation (about `+0.28x` a
+`GaugeField`), and **less** in absolute terms than the old peak because the
+old `gf_gauge_gradient` transient is gone.
 
 ## Example and Cross-Check
 
 The example `examples-py/gauge-fixing.py` runs on a `4^4` lattice with two
 MPI processes, fixes both gauges and checks the convergence, the gauge
 condition, unitarity, the monotone increase of the functional and the
-invariance of the plaquette.  It is registered in `examples-py/Makefile` and
+invariance of the plaquette.  It obtains the fixed field as `gt * gf` and
+asserts that the input field is left exactly unchanged (link matrices,
+plaquette and functional).  It is registered in `examples-py/Makefile` and
 runs through the examples-py test suite / `nixpkgs/run-one-example-py.py`.
 
-`examples-py/gauge-fixing-cross-check.py` is a manual (non-CI) script that
-fixes the same deterministic random field with this implementation and with
-the pure-NumPy reference package `qlat-ref`, and compares the converged
-functional, the divergence, the unitarity error and the fixed link matrices.
+`examples-py/gauge-fixing-cross-check.py` is a manual (non-CI) script — it has
+no reference log and is not a `Makefile` target — that fixes the same
+deterministic random field with this implementation and with the pure-NumPy
+reference package `qlat-ref`, and compares the converged functional, the
+divergence, the unitarity error and the fixed link matrices.  Both
+implementations return a transform, so the comparison applies both transforms
+to the same original field and compares the resulting fixed fields (see the
+non-uniqueness note above).  Run it manually with `mpiexec`.
+
+`qlat-ref` is an installed package in the nix development environment (it is
+part of `qlat-jhub-env` and has its own `qlat_ref` nix attribute), so the
+script just imports it:
+
+```bash
+source result-py-local/bin/setenv-qlat.sh
+mpiexec -n 2 --oversubscribe --bind-to none \
+  python3 -m mpi4py examples-py/gauge-fixing-cross-check.py
+```
+
+It is still not in CI because the nix *example* derivation does not depend on
+`qlat-ref`.  A `sys.path` fallback adds the sibling `qlat-ref/` source tree
+when the environment has not been rebuilt since `qlat-ref` was packaged, so a
+plain checkout also works.  The reference package's own tests are run with
+`cd qlat-ref && python3 -m unittest discover -s tests -t . -v` (see
+`docs/qlat-ref.rst`).
+
+### End-to-end flow with HMC
+
+The same `gt` transforms an HMC momentum at the same site, by the adjoint
+action
+
+$$
+P'_\mu(x) = gt(x) P_\mu(x) gt(x)^\dagger
+\tag{7}
+$$
+
+(`q.gm_apply_gauge_transformation`, also available as `gt * gm`), so a
+gauge-fixed configuration can be prepared together with its momentum:
+
+```python
+gt, info = q.fix_landau_gauge(gf, max_iter=5000, eps=1.0e-8, alpha=0.1)
+assert info["converged"]
+gf_fixed = gt * gf                                  # gf is untouched
+gm_fixed = q.gm_apply_gauge_transformation(gm, gt)  # or gt * gm; gm is untouched
+delta_h = q.run_hmc_evolve_pure_gauge(gm_fixed, gf_fixed, ga, n_step=8)
+```
+
+Neither transform mutates its input; the momentum law is the same-site
+adjoint action, while the link law in [Eq. (5)](#algorithm) has the shifted
+`g(x+\mu)^dagger` factor.  See `docs/qlat/qlat_hmc.md` for the momentum
+conventions (and for the `_dual` momentum, which this transform does not
+cover).

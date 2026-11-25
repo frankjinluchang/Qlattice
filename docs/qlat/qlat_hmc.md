@@ -192,6 +192,52 @@ Compute the dual force contribution.
 
 ### Gauge-Transformation Utilities
 
+#### `gm_apply_gauge_transformation(gm, gt, is_dagger=False) -> GaugeMomentum`
+
+```python
+gm_apply_gauge_transformation(gm: GaugeMomentum, gt: GaugeTransform,
+                              is_dagger: bool = False) -> GaugeMomentum
+```
+
+Return the gauge-transformed momentum `Ad_gt(gm)` as a **new**
+`GaugeMomentum`; `gm` itself is not modified and must be initialised on the
+geometry of `gt`.  With `is_dagger=False` the entries are
+
+$$
+P'_\mu(x) = gt(x) P_\mu(x) gt(x)^\dagger
+\tag{1}
+$$
+
+and with `is_dagger=True` the inverse action
+
+$$
+P'_\mu(x) = gt(x)^\dagger P_\mu(x) gt(x)
+\tag{2}
+$$
+
+Because `gt` is unitary, applying `is_dagger=True` after `is_dagger=False`
+returns the input momentum (to round-off).
+
+The transform acts at the **same site**, with no `x + mu` shift and no
+communication: qlat's MD update left-multiplies the exponential at the same
+site (`gf_evolve` computes `U_mu(x) <- exp(eps P_mu(x)) U_mu(x)`), so
+covariance requires `P_mu(x) -> gt(x) P_mu(x) gt(x)^dagger`.  The `gt(x+mu)`
+factors of the link law cancel inside that product.  `is_dagger` flips the
+**left** factor only; it is not "apply `gt^-1` on the right".
+
+`Ad_gt` preserves the anti-Hermitian and traceless property of the momentum,
+and it commutes with one leapfrog kick and with the pure-gauge force, so
+transforming the pair `(gf, gm)` commutes with a full molecular-dynamics
+trajectory.  The example test `examples-py/hmc-gauge-commute.py` measures
+this: evolving and then transforming agrees with transforming and then
+evolving to round-off, with the same `delta_h` in both branches.
+
+`gt * gm` is equivalent sugar for the default direction; the inverse needs
+`is_dagger=True` explicitly.  This function is **not** valid for a `_dual`
+momentum: the dual update right-multiplies (`U <- U exp(-eps P_dual)`) and the
+dual momentum lives at `x + mu`, so its covariant law is different and is not
+implemented.
+
 #### `project_gauge_transform(gm, gm_dual, mf, mf_dual) -> float`
 
 ```python
@@ -407,6 +453,44 @@ basis = q.FieldRealD(geo, 4 * 8)
 # Convert anti-Hermitian matrices to basis and back
 q.set_basis_from_anti_hermitian_matrix(basis, fc)
 q.set_anti_hermitian_matrix_from_basis(fc, basis)
+
+q.end_with_mpi()
+```
+
+### Gauge-Transforming a Gauge-Field/Momentum Pair
+
+```python
+import qlat as q
+
+size_node_list = [
+    [1, 1, 1, 1],
+]
+
+q.begin_with_mpi(size_node_list)
+
+total_site = q.Coordinate([4, 4, 4, 8])
+geo = q.Geometry(total_site)
+
+gf = q.GaugeField(geo)
+gf.set_rand(q.RngState("gf"), 0.5, 1)
+gf.unitarize()
+
+gm = q.GaugeMomentum(geo)
+gm.set_rand(q.RngState("gm"), 1.0)
+
+gt = q.GaugeTransform(geo)
+gt.set_rand(q.RngState("gt"), 0.5, 1)
+gt.unitarize()
+
+# Neither call modifies its input; gt * gm is the sugar for the default
+# direction, and is_dagger=True applies the inverse.
+gf_new = gt * gf
+gm_new = q.gm_apply_gauge_transformation(gm, gt)
+gm_back = q.gm_apply_gauge_transformation(gm_new, gt, is_dagger=True)
+
+ga = q.GaugeAction(2.13, -0.331)
+delta_h = q.run_hmc_evolve_pure_gauge(gm_new, gf_new, ga, 8, 1.0)
+print(f"delta_h = {delta_h}")
 
 q.end_with_mpi()
 ```

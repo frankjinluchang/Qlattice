@@ -331,6 +331,16 @@ Fix a gauge field to Coulomb gauge using split-grid optimization.
 | `step_gd` | `float` | `0.1` | Gradient descent step size |
 | `rng_seed` | `str` | `None` | Random seed (no randomization if `None`) |
 
+> **Note:** this is the same convention as `qlat`'s own gauge fixers
+> (`q.fix_landau_gauge` / `q.fix_coulomb_gauge` / `q.fix_gauge`): the input
+> gauge field is not modified, the transform is returned, and the fixed field
+> is the new field `gt * gf`.  The `gt` operates on the links as
+> `U'_mu(x) = gt(x) U_mu(x) gt(x+mu)^dagger` and on an HMC momentum at the
+> same site as `P'_mu(x) = gt(x) P_mu(x) gt(x)^dagger`
+> (`q.gm_apply_gauge_transformation`, also `gt * gm`).  See
+> `docs/qlat/qlat_gauge_fixing.md` and `docs/qlat/qlat_hmc.md`.  Here `gf` is
+> only read (it is converted to GPT internally and never written back).
+
 ### `check_gauge_fix_coulomb`
 
 ```python

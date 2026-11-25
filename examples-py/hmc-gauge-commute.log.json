@@ -1,0 +1,32 @@
+[
+ [
+  "hmc-gauge-commute: links = True"
+ ],
+ [
+  "hmc-gauge-commute: momentum = True"
+ ],
+ [
+  "hmc-gauge-commute: delta_h = True"
+ ],
+ [
+  "hmc-gauge-commute: inverse = True"
+ ],
+ [
+  "hmc-gauge-commute: anti_hermitian = True"
+ ],
+ [
+  "hmc-gauge-commute: hamilton = True"
+ ],
+ [
+  "hmc-gauge-commute: sugar = True"
+ ],
+ [
+  "hmc-gauge-commute: momentum input unchanged = True"
+ ],
+ [
+  "hmc-gauge-commute: gt is non-trivial = True"
+ ],
+ [
+  "hmc-gauge-commute: fields moved = True"
+ ]
+]
