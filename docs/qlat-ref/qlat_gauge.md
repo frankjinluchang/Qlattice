@@ -11,8 +11,9 @@ Source: `qlat-ref/qlat_ref/gauge.py`
 3. [Algorithm](#algorithm)
 4. [Convergence and Monitoring](#convergence-and-monitoring)
 5. [Public Interface](#public-interface)
-6. [Examples](#examples)
-7. [Self-Checks](#self-checks)
+6. [Momentum Fields](#momentum-fields)
+7. [Examples](#examples)
+8. [Self-Checks](#self-checks)
 
 ---
 
@@ -101,7 +102,17 @@ but become unstable, so `alpha = 0.1` is the safe default.
 One sweep computes `D(x)` on the whole lattice and then applies the
 transformation to every site at once (Jacobi sweep, no site loop and no
 ordering dependence).  The gauge field `U` passed to the fixing functions is
-not mutated; a gauge-transformed copy is returned.
+not mutated: the fixing functions accumulate the gauge transformation of all
+sweeps and return it.  The accumulated transformation is multiplied on the
+left by every new sweep,
+
+$$
+g_{n+1} = g_{\text{step}} \, g_n
+\tag{6}
+$$
+
+so that applying it once reproduces the field after every sweep, and
+`apply_gauge_transform(U, gt)` is the gauge-fixed field.
 
 ## Convergence and Monitoring
 
@@ -109,7 +120,7 @@ The convergence measure is the RMS lattice divergence
 
 $$
 \theta = \sqrt{\frac{1}{V \cdot 3} \sum_x \operatorname{Tr} \left( D(x) D(x)^\dagger \right)}
-\tag{6}
+\tag{7}
 $$
 
 which vanishes exactly when the gauge condition `D(x) = 0` holds.  The
@@ -125,7 +136,10 @@ easy to monitor the convergence.
   random unitary gauge field.
 - `get_random_gauge_transform(total_site, *, seed=0, scale=0.3)` — deterministic
   random `SU(3)` gauge transformation.
-- `apply_gauge_transform(U, g)` — apply a gauge transformation.
+- `apply_gauge_transform(U, g)` — apply a gauge transformation to a link
+  field.
+- `apply_gauge_transform_to_momentum(P, g, is_dagger=False)` — apply the same
+  gauge transformation to a momentum field (no shift).
 - `get_gauge_functional(U, *, dirs=None)` — normalized gauge functional.
 - `get_coulomb_functional_list(U)` — Coulomb functional of each time slice.
 - `get_gauge_divergence(U, *, dirs=None)` — RMS divergence `theta`.
@@ -139,10 +153,43 @@ easy to monitor the convergence.
 - `fix_coulomb_gauge(U, *, max_iter=10000, eps=1e-10, alpha=0.1,
   verbose=False)` — Coulomb gauge fixing.
 
-`fix_landau_gauge` and `fix_coulomb_gauge` return a tuple `(U_fixed, info)`.
-`info` contains the gauge name, the direction set, the final functional and
-divergence, the convergence flag, the number of sweeps and the per-sweep
-history.
+`fix_landau_gauge` and `fix_coulomb_gauge` return a tuple `(gt, info)`, where
+`gt` is the accumulated gauge transformation: the gauge-fixed field is
+`apply_gauge_transform(U, gt)`.  `info` contains the gauge name, the direction
+set, the final functional and divergence, the convergence flag, the number of
+sweeps and the per-sweep history.
+
+`gt` is **not unique**.  It depends on the fixing path (`alpha`, `max_iter`,
+rounding), and every transformation that leaves the gauge condition invariant
+multiplies it without changing the fixed field — for Landau gauge a global
+center element, for Coulomb gauge one per time slice.  Compare fixed *fields*
+or gauge-invariant observables, never the transformations themselves.
+
+## Momentum Fields
+
+The conjugate momentum of the gauge field (the `GaugeMomentum` of `qlat`) is an
+anti-hermitian traceless color matrix on every site and direction, so it has
+the same array layout as a link field:
+
+    P.shape == (4, Nt, Nx, Ny, Nz, 3, 3)
+
+Unlike a link, a momentum is attached to a single site: it carries no
+neighbor index and the gauge transformation therefore acts without the shift
+of Eq. (1),
+
+$$
+P_\mu(x) \to g(x) P_\mu(x) g(x)^\dagger
+\tag{8}
+$$
+
+which is the adjoint action of `SU(3)` on its Lie algebra.  It preserves both
+the anti-hermiticity and the tracelessness of `P`, and it is the same
+expression as Eq. (1) with the `numpy.roll` of the link transformation
+removed — that shift is exactly the part that belongs to a link and not to a
+site field.  With `is_dagger=True` the transformation acts with $g^\dagger$ on
+the left and with $g$ on the right, which is its inverse, so the two calls
+with the same `g` restore the input.  Like the link transformation, it does
+not modify its inputs and returns a new array.
 
 ## Examples
 
@@ -152,28 +199,68 @@ import qlat_ref as qr
 
 total_site = (2, 2, 2, 2)
 U = qr.get_random_gauge_field(total_site, seed=0)
-U_fixed, info = qr.fix_landau_gauge(U)
+gt, info = qr.fix_landau_gauge(U)
+U_fixed = qr.apply_gauge_transform(U, gt)
 assert info["converged"]
 assert qr.get_gauge_divergence(U_fixed) <= info["eps"]
 assert qr.check_unitarity(U_fixed, eps=1e-10)
+assert qr.check_unitarity(gt, eps=1e-10)  # gt is a site field; no np.stack needed
 
-U_coulomb, info_coulomb = qr.fix_coulomb_gauge(U)
+gt_coulomb, info_coulomb = qr.fix_coulomb_gauge(U)
+U_coulomb = qr.apply_gauge_transform(U, gt_coulomb)
 assert info_coulomb["converged"]
 assert max(qr.get_coulomb_divergence_list(U_coulomb)) <= np.sqrt(U.shape[1]) * info_coulomb["eps"]
 ```
 
+The momentum of the gauge-fixed configuration is obtained with the same
+transformation:
+
+```python
+rng = np.random.default_rng(0)
+H = rng.standard_normal(U.shape) + 1j * rng.standard_normal(U.shape)
+P = qr.get_traceless_antihermitian_part(H)  # a momentum field
+P_fixed = qr.apply_gauge_transform_to_momentum(P, gt)
+```
+
+so that `(U_fixed, P_fixed)` is the gauge-fixed configuration.  Applying `gt`
+a second time is not the inverse: use `is_dagger=True`, which restores `P`
+exactly.
+
 ## Self-Checks
 
-The module owns a runnable self-test:
+The package owns a standard-library `unittest` suite in `qlat-ref/tests/`.
+Run it from the checkout (no install needed):
 
 ```bash
 cd qlat-ref
-python3 -m qlat_ref.tests
+python3 -m unittest discover -s tests -t . -v
 ```
 
-It checks that the random fields are unitary, that the functional increases
+From the repository root the equivalent is:
+
+```bash
+python3 -m unittest discover -s qlat-ref/tests -t qlat-ref -v
+```
+
+The historical `python3 -m qlat_ref.tests` entry point still works as a thin
+shim around the same suite.  The nix derivation runs the identical suite as an
+install check (`unittestCheckHook`), and `./scripts/qlat-ref-test.sh` runs it in
+the `./scripts` flow; a failing test fails those builds.
+
+The suite is split into `tests/test_gauge_fixing.py` (fixing),
+`tests/test_momentum.py` (the momentum transform) and
+`tests/test_invariants.py` (unitarity, determinism and array conventions), with
+shared deterministic helpers in `tests/helpers.py`.  It checks that the random
+fields are unitary, that the functional increases
 monotonically during the plain iteration, that both gauges converge and
 satisfy their gauge condition, that a `1^4` lattice is trivially gauge fixed
 (the functional is invariant and the divergence vanishes), that the iteration
-is exactly covariant under a global gauge transformation, and that the
-converged functional does not depend on the step size.
+is exactly covariant under a global gauge transformation (both the fixed field
+and the accumulated transformation), that the accumulated transformation
+reproduces the iterated field, that the transform is only unique up to the
+center stabiliser (the Landau and Coulomb fixed fields are unaffected while the
+transforms differ), and that the converged functional does not depend on the
+step size.  The momentum transformation is checked against the
+site-by-site adjoint action, for the `is_dagger` inverse, for the composition
+order `g_2 g_1`, for the preservation of the anti-hermitian traceless algebra
+and of the invariant `sum_x Tr P^2`, and for undoing the gauge fixing.

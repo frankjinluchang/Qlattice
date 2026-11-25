@@ -9,6 +9,7 @@ code.  The gauge-fixing module is :mod:`qlat_ref.gauge`; its documentation is
 from .gauge import (
     NC,
     apply_gauge_transform,
+    apply_gauge_transform_to_momentum,
     check_unitarity,
     fix_coulomb_gauge,
     fix_landau_gauge,
@@ -32,6 +33,7 @@ from .gauge import (
 __all__ = [
     "NC",
     "apply_gauge_transform",
+    "apply_gauge_transform_to_momentum",
     "check_unitarity",
     "fix_coulomb_gauge",
     "fix_landau_gauge",

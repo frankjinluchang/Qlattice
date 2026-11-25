@@ -18,6 +18,10 @@ so ``U[mu]`` is the field of links in direction ``mu`` (``0 = t``,
 last two axes are the (row, column) color indices of the ``SU(3)`` matrix.
 A gauge transformation ``g`` is a site field of shape::\n
     g.shape == (Nt, Nx, Ny, Nz, NC, NC)\n
+A momentum field ``P`` (a Lie-algebra valued site field: the conjugate\n
+momentum of the gauge field) keeps the layout of ``U`` but lives on a single\n
+site, so a gauge transformation acts on it without a shift::\n
+    P.shape == (4, Nt, Nx, Ny, Nz, NC, NC)\n
 The lattice is periodic in every direction, so a shift by one hop in
 direction ``mu`` is ``numpy.roll(..., 1, axis=mu)``: for a link field ``U[mu]``
 the coordinate axis of direction ``mu`` is ``axis=mu`` because ``U[mu]``
@@ -146,6 +150,29 @@ def apply_gauge_transform(U, g):
         [g @ U[mu] @ get_matrix_adjoint(np.roll(g, -1, axis=mu)) for mu in range(4)]
     )
 
+def apply_gauge_transform_to_momentum(P, g, is_dagger=False):
+    """
+    Return the gauge-transformed momentum ``P^g`` with\n
+        ``P^g_mu(x) = g(x) P_mu(x) g(x)^dagger``.\n
+    ``P`` has shape ``(4, Nt, Nx, Ny, Nz, NC, NC)`` and ``g`` has shape
+    ``(Nt, Nx, Ny, Nz, NC, NC)``, the same layouts as ``U`` and ``g`` in
+    :func:`apply_gauge_transform`.  A momentum (a Lie-algebra valued site
+    field in the same representation as the link field) is attached to one
+    site, so this transformation has **no** shift: it is
+    :func:`apply_gauge_transform` without the ``numpy.roll`` of ``g``.
+    With ``is_dagger=True`` return ``g(x)^dagger P_mu(x) g(x)``, which is the
+    inverse transformation.  The inputs are not modified; a new array is
+    returned.
+    """
+    P = np.asarray(P, dtype=np.complex128)
+    g = np.asarray(g, dtype=np.complex128)
+    assert P.shape[0] == 4
+    assert P.shape[1:] == g.shape
+    g_dag = get_matrix_adjoint(g)
+    if is_dagger:
+        return np.stack([g_dag @ P[mu] @ g for mu in range(4)])
+    return np.stack([g @ P[mu] @ g_dag for mu in range(4)])
+
 def get_staple_sum(U, *, dirs=None):
     """
     Return the local ``K`` matrix on each site,\n
@@ -256,11 +283,20 @@ def _fix_gauge(U, *, dirs, gauge_name, max_iter, eps, alpha, verbose):
     applied to every site at once (Jacobi sweep):\n
         ``U_mu(x) <- g(x) U_mu(x) g(x + mu)^dagger``.\n
     The iteration stops when the RMS divergence is at most ``eps`` or after
-    ``max_iter`` sweeps.
+    ``max_iter`` sweeps.\n
+    Return ``(gt, U_fixed, info)``: ``gt`` is the accumulated gauge
+    transformation of all sweeps (new steps multiplied on the left, so that
+    ``apply_gauge_transform(U, gt)`` is exactly ``U_fixed``), ``U_fixed`` is
+    the gauge-fixed field and ``info`` is the convergence history.  ``gt`` is
+    only defined up to the transformations that leave the gauge condition
+    invariant (see :func:`fix_landau_gauge`).
     """
     U = np.array(U, dtype=np.complex128, copy=True)
     assert alpha > 0.0
     dirs = get_dirs(dirs)
+    # Accumulated gauge transformation: gt(x) is the site field such that
+    # apply_gauge_transform(U_input, gt) is the gauge-fixed field.
+    gt = np.broadcast_to(np.eye(NC, dtype=np.complex128), U.shape[1:]).copy()
     # Evaluate the state before the first sweep and refresh it after each one.
     D = get_local_gauge_gradient(U, dirs=dirs)
     functional = get_gauge_functional(U, dirs=dirs)
@@ -281,7 +317,11 @@ def _fix_gauge(U, *, dirs, gauge_name, max_iter, eps, alpha, verbose):
         if divergence <= eps:
             converged = True
             break
-        U = apply_gauge_transform(U, get_su3_exp(alpha * D))
+        g_step = get_su3_exp(alpha * D)
+        U = apply_gauge_transform(U, g_step)
+        # Sequential application: the new step acts first, so it multiplies
+        # the accumulated transformation on the left.
+        gt = g_step @ gt
         D = get_local_gauge_gradient(U, dirs=dirs)
         functional = get_gauge_functional(U, dirs=dirs)
         divergence = get_divergence_from_gradient(D)
@@ -298,19 +338,26 @@ def _fix_gauge(U, *, dirs, gauge_name, max_iter, eps, alpha, verbose):
         "functional_list": functional_list,
         "divergence_list": divergence_list,
     }
-    return U, info
+    return gt, U, info
 
 def fix_landau_gauge(U, *, max_iter=10000, eps=1e-10, alpha=0.1, verbose=False):
     """
-    Return ``(U_fixed, info)`` with ``U_fixed`` in Landau gauge.\n
+    Return ``(gt, info)`` where ``apply_gauge_transform(U, gt)`` is in
+    Landau gauge.\n
     Landau gauge maximizes the functional\n
         ``F = (1 / (V * 4 * NC)) sum_{x, mu} Re Tr U_mu(x)``\n
     over all gauge transformations; the plain local iteration of
     :func:`_fix_gauge` uses all four directions.  The iteration stops when the
     RMS divergence is at most ``eps`` (or after ``max_iter`` sweeps); the
-    returned ``info`` dictionary records the convergence history.
+    returned ``info`` dictionary records the convergence history.\n
+    ``gt`` is not unique: the fixing path (``alpha``, ``max_iter``, rounding)
+    selects one representative, and any transformation that leaves the gauge
+    condition invariant (for Landau gauge a global center element) multiplies
+    it without changing the fixed field.  Compare fixed *fields*, not the
+    transformations.
     """
-    return _fix_gauge(
+    # The fixed field is dropped: apply_gauge_transform(U, gt) rebuilds it.
+    gt, _, info = _fix_gauge(
         U,
         dirs=_ALL_DIRS,
         gauge_name="landau",
@@ -319,10 +366,12 @@ def fix_landau_gauge(U, *, max_iter=10000, eps=1e-10, alpha=0.1, verbose=False):
         alpha=alpha,
         verbose=verbose,
     )
+    return gt, info
 
 def fix_coulomb_gauge(U, *, max_iter=10000, eps=1e-10, alpha=0.1, verbose=False):
     """
-    Return ``(U_fixed, info)`` with ``U_fixed`` in Coulomb gauge.\n
+    Return ``(gt, info)`` where ``apply_gauge_transform(U, gt)`` is in
+    Coulomb gauge.\n
     Coulomb gauge maximizes the functional\n
         ``F_C = (1 / (V * 3 * NC)) sum_{x, i} Re Tr U_i(x)``\n
     over gauge transformations ``g(t, x)`` that act independently on every
@@ -330,9 +379,11 @@ def fix_coulomb_gauge(U, *, max_iter=10000, eps=1e-10, alpha=0.1, verbose=False)
     (``i = 1, 2, 3``) and is a separate 3D Landau fixing per time slice.  The
     gauge transformation is still applied to all four link directions, so the
     result is a complete 4D gauge transformation.  The iteration stops when
-    the RMS divergence is at most ``eps`` (or after ``max_iter`` sweeps).
+    the RMS divergence is at most ``eps`` (or after ``max_iter`` sweeps).\n
+    ``gt`` is not unique for the same reasons as in
+    :func:`fix_landau_gauge`; compare fixed *fields*, not the transformations.
     """
-    return _fix_gauge(
+    gt, _, info = _fix_gauge(
         U,
         dirs=_SPATIAL_DIRS,
         gauge_name="coulomb",
@@ -341,3 +392,4 @@ def fix_coulomb_gauge(U, *, max_iter=10000, eps=1e-10, alpha=0.1, verbose=False)
         alpha=alpha,
         verbose=verbose,
     )
+    return gt, info
