@@ -853,8 +853,10 @@ class RngState:
         size)``, i.e. plain modulo (a negligible bias when ``volume`` does not
         divide ``2**64``; "fixing" it would break parity).  qlat's binding takes a
         ``Coordinate``; this accepts any length-4 sequence of ints and returns a
-        plain tuple, since ``qlat_ref`` has no ``Coordinate`` class (an
-        extension; the values are identical, see qlat-issue-7).
+        plain tuple, although ``qlat_ref.base.Coordinate`` now exists (an
+        extension: narrowing the parameter would be an API change needing a
+        parity-allowlist entry, and the values are already identical — see
+        qlat-issue-7).
         """
         total_vol = 1
         for v in size:

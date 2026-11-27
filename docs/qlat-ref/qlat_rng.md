@@ -270,7 +270,7 @@ method:
 | Extension | Why |
 |---|---|
 | `newtype(type_)` is exposed | it is three lines of C++ (it tags the stream so the counter string becomes `"[type,index]"`); the qlat binding does not expose it |
-| `c_rand_gen` accepts any length-4 sequence and returns a plain tuple | `qlat_ref` has no `Coordinate` class; the drawn values are identical |
+| `c_rand_gen` accepts any length-4 sequence and returns a plain tuple | `qlat_ref.base.Coordinate` exists, so narrowing it is possible, but that is an API change needing a parity-allowlist entry; the drawn values are already identical |
 
 Both are additions only: nothing that exists in `qlat` behaves differently here.
 
