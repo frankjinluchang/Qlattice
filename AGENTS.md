@@ -19,9 +19,14 @@ Python/C++ packages:
 - `qlat-cps` — CPS framework interface.
 
 A fifth package, `qlat-ref`, holds the pure-NumPy reference implementations
-(`qlat_ref`) used to cross-check `qlat`; it is packaged the same way but has no
-C/Cython code, and its tests are a stdlib `unittest` suite instead of the
-log-comparison examples (see "Test qlat-ref" below).
+(`qlat_ref`) used to cross-check `qlat`: the lattice types and the array
+bridge, Landau/Coulomb gauge fixing, the gauge functionals and divergences, the
+gauge action, `RngState`, and a pure-gauge HMC (Hamiltonian, force, Omelyan
+force-gradient integrator, trajectory driver).  It shares `qlat`'s names,
+signatures and defaults where the functionality overlaps, and documents every
+remaining deviation.  It is packaged the same way but has no C/Cython code, and
+its tests are a stdlib `unittest` suite instead of the log-comparison examples
+(see "Test qlat-ref" below).
 
 `qlat` also installs the top-level `qlat_gpt` module (GPT interface), and it
 re-exports everything from `qlat_utils`, so `import qlat as q` is the usual
@@ -173,6 +178,20 @@ python3 -m unittest discover -s qlat-ref/tests -t qlat-ref -v
 
 The historical `python3 -m qlat_ref.tests` entry point still works: it is a
 thin shim that discovers and runs the same suite.
+
+The default suite is **277 tests in about 23 s** and needs only `numpy`: the
+5 long multi-trajectory tests in `tests/test_hmc_slow.py` are skipped unless
+`QLAT_REF_SLOW=1` is set, and the parity tests against a live `qlat`
+(`tests/test_qlat_parity.py`, `tests/test_interface_parity.py`) skip themselves
+when `qlat` is not importable.  Run the slow module explicitly with:
+
+```bash
+cd qlat-ref
+QLAT_REF_SLOW=1 python3 -m unittest tests.test_hmc_slow -v
+```
+
+The docs are `docs/qlat-ref/*.md` (overview, types, gauge, observables, rng,
+hmc), registered in `docs/qlat-ref.rst`; every module docstring names its page.
 
 ### Run a new program with the nix-built environment
 
@@ -432,7 +451,7 @@ that contains math in headless chromium and reports the failing expressions.
 | `qlat/auto_contractor/` | Automatic contraction code generation |
 | `qlat/qlat_gpt.py` | GPT interface, installed as a top-level module |
 | `qlat-grid/`, `qlat-cps/` | Grid and CPS interface packages |
-| `qlat-ref/` | Pure-NumPy reference implementations (`qlat_ref`), a packaged dependency tested with stdlib `unittest` in `qlat-ref/tests/` |
+| `qlat-ref/` | Pure-NumPy reference implementations (`qlat_ref`): types, gauge fixing, observables, RNG and pure-gauge HMC; a packaged dependency tested with stdlib `unittest` in `qlat-ref/tests/`, documented in `docs/qlat-ref/` |
 | `examples-py/` | Python test/example scripts — canonical reference; keep up to date |
 | `examples-py-gpt/` | Python examples using the GPT/Grid interface — canonical reference; keep up to date |
 | `examples-py-cps/` | Python examples using the CPS interface — canonical reference; keep up to date |

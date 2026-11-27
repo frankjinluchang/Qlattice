@@ -7,7 +7,10 @@ historical command::\n
 keeps working.  Prefer running unittest directly::\n
     cd qlat-ref && python3 -m unittest discover -s tests -t . -v\n
 The tests are part of the source tree only and are not installed with the
-package.
+package.  The test commands and the suite layout are documented in
+``docs/qlat-ref.rst`` and ``qlat-ref/README.md``.\n
+Documentation: ``docs/qlat-ref.rst``\n
+.. note:: Update the documentation when updating this source file.
 """
 
 import os

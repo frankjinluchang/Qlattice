@@ -28,4 +28,9 @@ fails the nix build.
 .. toctree::
    :maxdepth: 1
 
+   qlat-ref/qlat_ref_overview.md
+   qlat-ref/qlat_types.md
    qlat-ref/qlat_gauge.md
+   qlat-ref/qlat_observables.md
+   qlat-ref/qlat_rng.md
+   qlat-ref/qlat_hmc.md
