@@ -204,18 +204,42 @@ The reasoning, the reproductions and the upstream status of every underlying
 
 ## Self-Checks
 
-```bash
-cd qlat-ref
-python3 -m unittest discover -s tests -t . -v
-```
-
-The suite needs only `numpy` and takes about half a minute.  The long
-multi-trajectory statistics are opt-in:
+The suite is 283 standard-library `unittest` tests.  It runs fastest under
+**pytest + pytest-xdist**, whose settings live in `qlat-ref/pyproject.toml`
+(`[tool.pytest.ini_options]`), so the command needs no flags:
 
 ```bash
 cd qlat-ref
-QLAT_REF_SLOW=1 python3 -m unittest tests.test_hmc_slow -v
+python3 -m pytest                 # 14.8 s, -n auto --maxprocesses=8 --dist loadfile
+python3 -m pytest -n 0            #  26.8 s, one interpreter (debugging)
 ```
+
+pytest and pytest-xdist are a **test extra** (`pip install -e '.[test]'`), never
+a runtime dependency: a plain `pip install .` still requires `numpy` only.
+`--dist loadfile` puts each test *file* on one worker, which is required
+because `tests/test_qlat_parity.py` owns process-global state
+(`q.begin_with_mpi()` once per module).
+
+Without pytest the identical suite runs on the standard library alone — the
+fallback when the test extra is not installed:
+
+```bash
+cd qlat-ref
+python3 -m unittest discover -s tests -t . -v     # 20.2 s
+```
+
+The suite needs only `numpy`.  The long multi-trajectory statistics are opt-in
+and are the one part that still costs a minute:
+
+```bash
+cd qlat-ref
+QLAT_REF_SLOW=1 python3 -m pytest                 # 62.8 s (87.9 s with -n 0)
+QLAT_REF_SLOW=1 python3 -m pytest tests/test_hmc_slow.py -v
+```
+
+`python -O` is supported as well: no test depends on a bare `assert`, and
+`tests/test_rng.py::TestValidationSurvivesOptimization` re-runs the RNG
+validation under `-O` to prove the checks survive.
 
 When a live `qlat` is importable, the two parity modules additionally verify the
 names, the signatures and the numerical results against it; otherwise those

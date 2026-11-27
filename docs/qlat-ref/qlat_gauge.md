@@ -288,9 +288,11 @@ python3 -m unittest discover -s qlat-ref/tests -t qlat-ref -v
 ```
 
 The historical `python3 -m qlat_ref.tests` entry point still works as a thin
-shim around the same suite.  The nix derivation runs the identical suite as an
-install check (`unittestCheckHook`), and `./scripts/qlat-ref-test.sh` runs it in
-the `./scripts` flow; a failing test fails those builds.
+shim around the same suite.  The suite also runs under pytest + pytest-xdist
+(`cd qlat-ref && python3 -m pytest`, a test extra, not a runtime dependency),
+which is what the nix derivation uses as its install check (`pytestCheckHook`);
+`./scripts/qlat-ref-test.sh` runs it in the `./scripts` flow.  A failing test
+fails those builds.
 
 The suite is split into `tests/test_gauge_fixing.py` (fixing),
 `tests/test_momentum.py` (the momentum transform) and

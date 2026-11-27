@@ -4,8 +4,11 @@ The checks now live in the standard-library ``unittest`` package ``tests/``
 next to this package; this module only discovers and runs them, so the
 historical command::\n
     cd qlat-ref && python3 -m qlat_ref.tests\n
-keeps working.  Prefer running unittest directly::\n
-    cd qlat-ref && python3 -m unittest discover -s tests -t . -v\n
+keeps working.  Prefer the parallel runner (pytest-xdist, a test extra) or
+unittest directly::\n
+    cd qlat-ref && python3 -m pytest                              # pyproject defaults
+    cd qlat-ref && python3 -m pytest -n 0 -v                      # sequential
+    cd qlat-ref && python3 -m unittest discover -s tests -t . -v  # no extra deps\n
 The tests are part of the source tree only and are not installed with the
 package.  The test commands and the suite layout are documented in
 ``docs/qlat-ref.rst`` and ``qlat-ref/README.md``.\n

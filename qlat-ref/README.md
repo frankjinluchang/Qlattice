@@ -134,10 +134,44 @@ running from inside it) still works as a no-install fallback.
 ## Tests
 
 The tests are a standard-library `unittest` suite in `tests/` (they are part of
-the source tree and of the sdist, but are not installed with the package):
+the source tree and of the sdist, but are not installed with the package).  Two
+runners are supported and run **the same 283 tests**; only the speed differs.
+
+**pytest (parallel, the fast runner).**  The runner settings live in
+`[tool.pytest.ini_options]` of `pyproject.toml`, so the plain command needs no
+flags:
 
 ```bash
 cd qlat-ref
+python3 -m pytest                     # -n auto --maxprocesses=8 --dist loadfile
+python3 -m pytest -n 0                # sequential, in one interpreter
+python3 -m pytest -n 8                # explicit worker count
+```
+
+pytest and pytest-xdist are a **test extra**, never a runtime dependency:
+
+```bash
+pip install -e '.[test]'              # or: pip install pytest pytest-xdist
+```
+
+A runtime install (`pip install .`) still pulls in `numpy` only.
+
+The defaults are `-n auto --maxprocesses=8 --dist loadfile`:
+
+- `--dist loadfile` sends every test **file** to exactly one worker.  This is a
+  correctness requirement, not a tuning choice: `tests/test_qlat_parity.py` owns
+  process-global state (`q.begin_with_mpi()` once per module), so all of a
+  file's tests must share one interpreter.  Do not switch to `--dist load` or
+  `loadscope` without re-checking the `setUpModule` hooks.
+- `--maxprocesses=8` caps the worker count.  The suite is 13 files, so beyond
+  ~13 workers only startup cost grows; measured `-n 4`, `-n 8`, `-n 13` and
+  `-n auto` all land at ~14.7 s on this machine, so the cap is free and keeps a
+  64-core host from spawning 64 interpreters.
+
+**unittest (no extra dependencies).**  Still fully supported — this is the
+fallback when pytest is not installed, and the historical entry point:
+
+```bash
 python3 -m unittest discover -s tests -t . -v
 ```
 
@@ -148,11 +182,30 @@ python3 -m unittest discover -s qlat-ref/tests -t qlat-ref -v
 ```
 
 The historical `python3 -m qlat_ref.tests` entry point still works as a thin
-shim around the same suite.  The default suite is **277 tests** and takes about
-**23 s**; 5 of them (`tests/test_hmc_slow.py`, the long multi-trajectory
-statistics) are skipped unless `QLAT_REF_SLOW=1` is set:
+shim around the same suite.
+
+**Timings** (13 files, 283 tests = 239 run + 44 skipped without a live `qlat`;
+8 workers on this 64-core host):
+
+| Invocation | Wall time |
+|---|---|
+| `pytest` (parallel, default) | **14.8 s** |
+| `pytest -n 0` (sequential) | 26.8 s |
+| `unittest discover` (sequential) | 20.2 s |
+| `pytest` with `QLAT_REF_SLOW=1` | 62.8 s |
+| `pytest -n 0` with `QLAT_REF_SLOW=1` | 87.9 s |
+| `python -O -m pytest` | 15.1 s |
+
+The speedup is bounded by `tests/test_hmc_driver.py`, which alone takes 13.2 s
+and is a single file, so it cannot be split across workers: the parallel run can
+never beat that critical path.  `--dist loadfile` is what keeps the suite safe
+rather than maximally fast.
+
+5 tests (`tests/test_hmc_slow.py`, the long multi-trajectory statistics) are
+skipped unless `QLAT_REF_SLOW=1` is set:
 
 ```bash
+QLAT_REF_SLOW=1 python3 -m pytest tests/test_hmc_slow.py -v
 QLAT_REF_SLOW=1 python3 -m unittest tests.test_hmc_slow -v
 ```
 
@@ -181,6 +234,11 @@ importable, so the suite needs only `numpy`:
 `newtype-vectors.json`, `hmc-vectors.json`) and the scripts that regenerate
 them from the C++ implementation (`make-*.py`, `newtype-probe.cpp`).
 
-The nix derivation runs the same suite as an install check
-(`unittestCheckHook`), so a failing test fails the nix build;
-`./scripts/qlat-ref-test.sh` runs it in the `./scripts` flow.
+The nix derivation runs the same suite as an install check with
+`pytestCheckHook` + pytest-xdist (the same runner, so a pytest-only collection
+failure cannot hide behind a green unittest run), so a failing test fails the
+nix build; `./scripts/qlat-ref-test.sh` runs it in the `./scripts` flow.
+
+`python -O` is supported too: no test relies on a bare `assert`, and
+`tests/test_rng.py::TestValidationSurvivesOptimization` re-runs the RNG
+validation under `-O` to prove it.

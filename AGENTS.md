@@ -147,7 +147,9 @@ The script sets up the nix and nom caches (falling back to `<repo>/tmp/` when th
 `qlat-ref/` is a **packaged** pure-Python package (`pname = qlat_ref`, only
 `numpy` required, built with `meson-python` like the other packages).  Its
 tests are a **standard-library `unittest` suite** in `qlat-ref/tests/`, not
-log-comparison tests, so they are not run by `run-one-example-*.py`.
+log-comparison tests, so they are not run by `run-one-example-*.py`.  They are
+driven by **pytest + pytest-xdist** (a *test* extra, never a runtime
+dependency) for parallel execution; `unittest discover` remains supported.
 
 Installation:
 
@@ -155,9 +157,13 @@ Installation:
   it is part of the `qlat-tests` and `qlat-jhub-env` package sets, and it is
   therefore installed in the `./result-py-local` environment that
   `install-py-local-kernel-with-nix.py` creates.  The derivation runs the
-  unittest suite in its install check via `unittestCheckHook`
-  (`unittestFlags = [ "-s" "tests" "-t" "." "-v" ]`), so a non-zero unittest
-  exit fails the nix build.
+  suite in its install check via `pytestCheckHook` + pytest-xdist — the same
+  runner a developer uses, so a pytest-only collection failure cannot hide
+  behind a green unittest run — and a non-zero pytest exit fails the nix
+  build.  The derivation sets `dontUsePytestXdist = true`, because xdist's nix
+  setup hook would otherwise append `--numprocesses=$NIX_BUILD_CORES` (64 on a
+  many-core builder) *after* the pyproject defaults; disabling it lets
+  `[tool.pytest.ini_options]` govern so the nix check is the same command.
 - **`./scripts/` flow**: `./scripts/qlat-ref.sh` installs it into the
   configured prefix (it is called by `build.default*.sh` and `qlat-all.sh`);
   `./scripts/qlat-ref-test.sh` runs the suite.
@@ -166,11 +172,33 @@ Run the tests directly (no nix build needed; this is the canonical command):
 
 ```bash
 cd qlat-ref
+python3 -m pytest
+```
+
+The runner configuration lives in `[tool.pytest.ini_options]` of
+`qlat-ref/pyproject.toml` (`testpaths = ["tests"]`, `addopts = "-n auto
+--maxprocesses=8 --dist loadfile"`), so the plain command needs no flags.
+pytest/pytest-xdist are installed by `pip install -e '.[test]'`; a plain
+`pip install .` still pulls in `numpy` only.
+
+- `python3 -m pytest -n 0` runs sequentially in one interpreter (use this to
+  debug ordering or to reproduce a nix-check failure).
+- `python3 -m pytest -n 8` overrides the worker count.
+- `--dist loadfile` sends each test **file** to one worker.  This is a
+  correctness requirement: `tests/test_qlat_parity.py` owns process-global
+  state (`q.begin_with_mpi()` once per module), so never switch to `--dist
+  load`/`loadscope` without re-checking the `setUpModule` hooks.
+
+`unittest discover` still works with no extra install, and is the equivalent
+command:
+
+```bash
+cd qlat-ref
 python3 -m unittest discover -s tests -t . -v
 ```
 
-From the repository root the equivalent (the trailing `-t qlat-ref` makes
-`tests/` importable) is:
+From the repository root (the trailing `-t qlat-ref` makes `tests/`
+importable):
 
 ```bash
 python3 -m unittest discover -s qlat-ref/tests -t qlat-ref -v
@@ -179,16 +207,20 @@ python3 -m unittest discover -s qlat-ref/tests -t qlat-ref -v
 The historical `python3 -m qlat_ref.tests` entry point still works: it is a
 thin shim that discovers and runs the same suite.
 
-The default suite is **277 tests in about 23 s** and needs only `numpy`: the
-5 long multi-trajectory tests in `tests/test_hmc_slow.py` are skipped unless
-`QLAT_REF_SLOW=1` is set, and the parity tests against a live `qlat`
-(`tests/test_qlat_parity.py`, `tests/test_interface_parity.py`) skip themselves
-when `qlat` is not importable.  Run the slow module explicitly with:
+The default suite is **283 tests** (239 run + 44 skipped without a live `qlat`)
+and needs only `numpy`: **14.8 s** with the parallel default, 26.8 s with
+`-n 0`, 20.2 s with `unittest discover`.  The 5 long multi-trajectory tests in
+`tests/test_hmc_slow.py` are skipped unless `QLAT_REF_SLOW=1` is set
+(`62.8 s` parallel / `87.9 s` serial), and the parity tests against a live
+`qlat` (`tests/test_qlat_parity.py`, `tests/test_interface_parity.py`) skip
+themselves when `qlat` is not importable.  `python -O` is also supported.  Run
+the slow module explicitly with:
 
 ```bash
 cd qlat-ref
-QLAT_REF_SLOW=1 python3 -m unittest tests.test_hmc_slow -v
+QLAT_REF_SLOW=1 python3 -m pytest tests/test_hmc_slow.py -v
 ```
+
 
 The docs are `docs/qlat-ref/*.md` (overview, types, gauge, observables, rng,
 hmc), registered in `docs/qlat-ref.rst`; every module docstring names its page.

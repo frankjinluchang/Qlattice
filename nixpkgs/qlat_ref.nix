@@ -2,7 +2,9 @@
 , buildPythonPackage
 , meson-python
 , numpy
-, unittestCheckHook
+, pytestCheckHook
+, pytest
+, pytest-xdist
 , qlat-src
 , qlat-name ? ""
 , version ? "current"
@@ -32,21 +34,49 @@ in buildPythonPackage.override { stdenv = stdenv; } {
     meson-python
   ];
 
+  # RUNTIME dependency: numpy only.  pytest / pytest-xdist below are
+  # check-time inputs and never enter the closure of an environment that
+  # installs qlat_ref.
   dependencies = [
     numpy
   ];
 
-  # The tests are a standard-library unittest package in the source tree (not
-  # installed into the wheel).  buildPythonPackage has no checkPhase, so
-  # unittestCheckHook adds unittestCheckPhase to preDistPhases and runs
-  # `python3 -m unittest discover` there; a non-zero unittest exit fails the
-  # build.  doInstallCheck is already true by default for python packages, but
-  # state it explicitly: the test suite is the point of this derivation.
+  # The tests are a standard-library unittest suite in the source tree (they
+  # are not installed into the wheel), run with pytest + pytest-xdist so the
+  # nix check exercises the documented runner instead of a second,
+  # differently-configured code path: a pytest-only collection failure cannot
+  # hide behind a green unittest run.
+  #
+  # pytestCheckHook appends pytestCheckPhase to preDistPhases; a non-zero
+  # pytest exit fails the build.  doInstallCheck is already true by default for
+  # python packages, but state it explicitly: the test suite is the point of
+  # this derivation.
   nativeCheckInputs = [
-    unittestCheckHook
+    pytestCheckHook
+    pytest
+    pytest-xdist
   ];
 
-  unittestFlags = [ "-s" "tests" "-t" "." "-v" ];
+  # The paths and parallel defaults live in [tool.pytest.ini_options] of
+  # pyproject.toml (testpaths = ["tests"], addopts = "-n auto --maxprocesses=8
+  # --dist loadfile"), so a developer's `cd qlat-ref && python3 -m pytest` needs
+  # no flags and the local and nix invocations cannot drift apart.
+  #
+  # pytest-xdist ships its own nix setup hook that appends
+  # `--numprocesses=$NIX_BUILD_CORES` during preInstallCheck.  In the sandbox
+  # that is the *host* core count (64 on the machine that built this), which for
+  # a 13-file suite means ~51 idle interpreters, and it lands after the
+  # pyproject defaults so it would silently override the worker cap.
+  # dontUsePytestXdist disables that hook, letting the pyproject settings govern
+  # so the nix check is the same command a developer runs.
+  dontUsePytestXdist = true;
+
+  # -p no:cacheprovider: never write .pytest_cache into the build directory.
+  # -v:                    a failure names the test in the nix log.
+  pytestFlags = [
+    "-p" "no:cacheprovider"
+    "-v"
+  ];
 
   doInstallCheck = true;
 

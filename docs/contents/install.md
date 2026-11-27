@@ -335,5 +335,7 @@ above).
 With nix, the same packages are the attributes `qlat_utils`, `qlat`, `qlat_grid`,
 `qlat_cps` and `qlat_ref` of `nixpkgs/q-pkgs.nix`; `qlat_ref` is part of the
 `qlat-jhub-env` and `qlat-tests` package sets, so it is installed together with
-the rest in `./result-py-local`. Its nix derivation runs the unittest suite as an
-install check (`unittestCheckHook`), so a failing test fails the nix build.
+the rest in `./result-py-local`. Its nix derivation runs the test suite as an
+install check (`pytestCheckHook` with pytest-xdist; pytest is a test-time input
+only, the runtime dependency stays `numpy`), so a failing test fails the nix
+build.

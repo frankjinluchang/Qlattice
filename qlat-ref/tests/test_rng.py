@@ -74,12 +74,23 @@ def build_state(spec):
     raise AssertionError(f"unknown seed_spec kind: {kind!r}")
 
 def assert_float_case(case, got, want_hex, want_decimal):
-    """Compare a float sequence exactly on x86-64 Linux, loosely elsewhere."""
+    """Compare a float sequence exactly on x86-64 Linux, loosely elsewhere.\n
+    Uses ``raise`` and not a bare ``assert``: this helper is called from the
+    unittest methods, so an ``assert`` here would compile away under
+    ``python -O`` and the comparison would silently pass without checking
+    anything.  (A module-level bare ``assert`` is exactly the qlat-issue-5
+    defect the sibling :class:`TestValidationSurvivesOptimization` guards
+    against, so it must not appear in this module either.)
+    """
     if IS_REFERENCE_PLATFORM:
-        assert [v.hex() for v in got] == want_hex
+        if [v.hex() for v in got] != want_hex:
+            raise AssertionError(
+                f"{case}: got {[v.hex() for v in got]}, want {want_hex}"
+            )
     else:
         for g, w in zip(got, want_decimal):
-            assert math.isclose(g, w, rel_tol=1e-13, abs_tol=1e-300), (g, w)
+            if not math.isclose(g, w, rel_tol=1e-13, abs_tol=1e-300):
+                raise AssertionError(f"{case}: got {g!r}, want {w!r}")
 
 ### -------------------------------------------------------------------
 
