@@ -1,0 +1,18 @@
+{
+  "newtype_cases": {
+    "typed_5": {
+      "note": "RngState('test-rng').newtype(5): the counter string becomes '[type,index]'",
+      "seed_spec": {"kind": "seed", "value": "test-rng"},
+      "type": 5,
+      "values": [9589291421813335777, 13468733132392537592, 6159637154388828356, 7358751720639981857, 12750448034895494677, 3775240013777018228, 2198129409254542216, 4088103763547679341]
+    },
+    "typed_0_split_k": {
+      "note": "RngState().newtype(0).split('k'): the split label becomes '[type,index] {k}' and the tag is cleared",
+      "seed_spec": {"kind": "fresh"},
+      "type": 0,
+      "split": "k",
+      "num_bytes_after_split": 64,
+      "values": [1262591467389600163, 11082198802625541813, 16187497363240167838, 2974286282025800361, 16420880718094479551, 14152372295250133850, 11086294174409724754, 4246910071585938777]
+    }
+  }
+}

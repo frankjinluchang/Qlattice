@@ -1,6 +1,7 @@
 # `qlat_ref.gauge` — Landau and Coulomb Gauge Fixing (NumPy Reference)
 
-Source: `qlat-ref/qlat_ref/gauge.py`
+Source: `qlat-ref/qlat_ref/gauge_fixing.py` (facade:
+`qlat-ref/qlat_ref/gauge.py`)
 
 > **Note:** Update this document when updating the source file.
 
@@ -67,9 +68,26 @@ F = \frac{1}{V \cdot 4 \cdot 3} \sum_{x,\mu} \operatorname{Re} \operatorname{Tr}
 $$
 
 and the Coulomb gauge functional is the same sum restricted to the spatial
-directions `i = 1, 2, 3`.  The Coulomb functional splits into one independent
-three-dimensional Landau functional per time slice, because a Coulomb gauge
-transformation `g(t, x)` acts inside a single time slice on the spatial links.
+directions `i = 0, 1, 2`.  Component 3 is **time** in qlat's convention
+(`total_site` is `(Lx, Ly, Lz, Lt)`; `Geometry.spatial_volume` divides out
+component 3, and `get_psel_tslice` slices `t_dir=3`), so the spatial directions
+are `0, 1, 2`, not `1, 2, 3`.  The Coulomb functional splits into one
+independent three-dimensional Landau functional per time slice, because a
+Coulomb gauge transformation `g(t, x)` acts inside a single time slice on the
+spatial links.
+
+> **Deviation from qlat.** `q.fix_coulomb_gauge` uses the directions
+> `{1, 2, 3}`, i.e. it fixes the three directions that *include* time and
+> excludes the spatial direction `0`.  That is qlat-issue-8 in
+> `tmp/qlat-ref-reorg/qlat-issues.md`, and the user decided `qlat_ref`
+> implements the correct set.  The deviation is intentional and observable:
+> the field fixed by `qlat_ref` satisfies the gauge condition for `(0, 1, 2)`
+> and not for `(1, 2, 3)`, while the field fixed by `q.fix_coulomb_gauge`
+> shows the opposite.  `q.fix_coulomb_gauge` is exactly
+> `q.fix_gauge(gf, dirs=[1, 2, 3])`, so
+> `examples-py/gauge-fixing-cross-check.py` compares against
+> `q.fix_gauge(gf, dirs=[0, 1, 2])` — the same algorithm on the correct
+> directions — instead of against the buggy fixer.
 
 At every site the local gradient matrix is
 
@@ -86,7 +104,8 @@ K(x) = \sum_{\mu} \left( U_\mu(x) + U_\mu(x-\mu)^\dagger \right)
 $$
 
 the sum running over all four directions for Landau gauge and over the
-spatial directions for Coulomb gauge.  `D(x)` is anti-hermitian and traceless,
+spatial directions `(0, 1, 2)` for Coulomb gauge (see the note above).
+`D(x)` is anti-hermitian and traceless,
 so the local gauge transformation
 
 $$
@@ -140,18 +159,42 @@ easy to monitor the convergence.
   field.
 - `apply_gauge_transform_to_momentum(P, g, is_dagger=False)` — apply the same
   gauge transformation to a momentum field (no shift).
-- `get_gauge_functional(U, *, dirs=None)` — normalized gauge functional.
+- `get_gauge_functional(gf, dirs=_ALL_DIRS)` — normalized gauge functional.
+  The required `dirs` of `qlat` is given a default here, so the historical
+  `get_gauge_functional(U)` call keeps working.
 - `get_coulomb_functional_list(U)` — Coulomb functional of each time slice.
-- `get_gauge_divergence(U, *, dirs=None)` — RMS divergence `theta`.
+- `get_gauge_divergence(gf, dirs=_ALL_DIRS)` — RMS divergence `theta` (same
+  `dirs` default).
 - `get_coulomb_divergence_list(U)` — RMS divergence of each time slice.
-- `get_local_gauge_gradient(U, *, dirs=None)` — local gradient field `D(x)`.
-- `get_staple_sum(U, *, dirs=None)` — staple sum `K(x)`.
-- `get_unitarity_error(U)` / `check_unitarity(U, *, eps=1e-12)` — unitarity
-  monitoring.
-- `fix_landau_gauge(U, *, max_iter=10000, eps=1e-10, alpha=0.1,
-  verbose=False)` — Landau gauge fixing.
-- `fix_coulomb_gauge(U, *, max_iter=10000, eps=1e-10, alpha=0.1,
-  verbose=False)` — Coulomb gauge fixing.
+- `get_local_gauge_gradient(gf, dirs=None)` — local gradient field `D(x)`.
+- `get_staple_sum(gf, dirs=None)` — staple sum `K(x)`.
+- `get_unitarity_error(gf)` / `check_unitarity(gf, *, eps=1e-12)` — unitarity
+  monitoring.  `observables.get_unitarity_error_typed(gf)` is the typed entry
+  point that mirrors `qlat.gauge_fixing.get_unitarity_error`: it accepts a
+  `GaugeField` **or** a `GaugeTransform` and raises `TypeError` for anything
+  else (a `GaugeMomentum`, a raw array, ...), so both packages share one
+  accepted-type contract.  The array-level `mat.get_unitarity_error(U)` stays
+  the generic matrix routine and takes any array.
+- `fix_landau_gauge(gf, max_iter=10000, eps=1e-10, alpha=0.1, verbose=False)`
+  — Landau gauge fixing.
+- `fix_coulomb_gauge(gf, max_iter=10000, eps=1e-10, alpha=0.1, verbose=False)`
+  — Coulomb gauge fixing.
+- `fix_gauge(gf, dirs, max_iter=10000, eps=1e-10, alpha=0.1, verbose=False)` —
+  gauge fixing with an explicit direction list.
+
+Every positional signature above matches `qlat`'s exactly, with one
+deliberate exception: the facade gives `dirs` a default for
+`get_gauge_functional` and `get_gauge_divergence` so the historical
+one-argument calls keep working.  The top level `qlat_ref` and the topic module
+`qlat_ref.observables` keep qlat's required `dirs`, so
+`qr.get_gauge_functional(U)` is a `TypeError` there, exactly as in qlat.
+`qlat-ref/tests/test_interface_parity.py` asserts the top-level signatures
+against a live build and pins the facade default;
+`qlat-ref/tests/test_qlat_parity.py` additionally compares the numerical
+results.
+`gf` may be a plain `(4, Nt, Nx, Ny, Nz, NC, NC)` array or a
+`qlat_ref.field.GaugeField`; the two are equivalent through the array bridge
+described in [`qlat_ref` overview](qlat_ref_overview.md).
 
 `fix_landau_gauge` and `fix_coulomb_gauge` return a tuple `(gt, info)`, where
 `gt` is the accumulated gauge transformation: the gauge-fixed field is
@@ -209,7 +252,9 @@ assert qr.check_unitarity(gt, eps=1e-10)  # gt is a site field; no np.stack need
 gt_coulomb, info_coulomb = qr.fix_coulomb_gauge(U)
 U_coulomb = qr.apply_gauge_transform(U, gt_coulomb)
 assert info_coulomb["converged"]
-assert max(qr.get_coulomb_divergence_list(U_coulomb)) <= np.sqrt(U.shape[1]) * info_coulomb["eps"]
+# U is (4, L0, L1, L2, L3, 3, 3); time is component 3, i.e. array axis 4.
+n_t = U.shape[4]
+assert max(qr.get_coulomb_divergence_list(U_coulomb)) <= np.sqrt(n_t) * info_coulomb["eps"]
 ```
 
 The momentum of the gauge-fixed configuration is obtained with the same

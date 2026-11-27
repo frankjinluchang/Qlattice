@@ -77,10 +77,25 @@ class TestCoulombGaugeFixing(GaugeTestCase):
         self.assertLessEqual(max(divergence_list), EPS * np.sqrt(len(divergence_list)))
         self.assertEqual(len(divergence_list), U.shape[1])
 
-    def test_uses_spatial_directions(self):
+    def test_uses_the_correct_spatial_directions(self):
+        # Component 3 is time (qlat's `total_site` is (Lx, Ly, Lz, Lt),
+        # `Geometry::spatial_volume` divides out component 3 and
+        # `get_psel_tslice` slices `t_dir=3`), so the spatial directions are
+        # 0, 1, 2.  qlat's `gf_fix_coulomb_gauge` uses {1, 2, 3} instead, which
+        # is qlat-issue-8; qlat_ref deliberately uses the correct set.
         U = get_random_field(seed=SEED + 1)
         _, _, info = self.check_fix(g.fix_coulomb_gauge, U, alpha=ALPHA)
-        self.assertEqual(info["dirs"], (1, 2, 3))
+        self.assertEqual(info["dirs"], (0, 1, 2))
+
+    def test_correct_dirs_converge_and_qlat_dirs_do_not(self):
+        # The distinguishing signature of the convention: the Coulomb gauge
+        # condition must hold for {0, 1, 2} and must NOT hold for qlat's
+        # {1, 2, 3}.  This is what makes the deviation observable rather than
+        # cosmetic.
+        U = get_random_field(seed=SEED + 1)
+        _, U_fixed, _ = self.check_fix(g.fix_coulomb_gauge, U, alpha=ALPHA)
+        self.assertLessEqual(g.get_gauge_divergence(U_fixed, (0, 1, 2)), EPS)
+        self.assertGreater(g.get_gauge_divergence(U_fixed, (1, 2, 3)), 1e-2)
 
 class TestGaugeCovariance(GaugeTestCase):
     def test_fixed_field_is_covariant(self):
@@ -140,17 +155,27 @@ class TestTransformNotUnique(GaugeTestCase):
 
     def test_coulomb_transform_is_not_unique_per_slice(self):
         # For Coulomb gauge the same holds per time slice: the Coulomb
-        # functional only involves the spatial links, which lie inside one
-        # slice.
+        # functional only involves the spatial links (0, 1, 2), which stay
+        # inside one time slice, so an independent center element per slice
+        # leaves the fixed field invariant.
+        #
+        # Component 3 is time (qlat's `total_site` is (Lx, Ly, Lz, Lt)), so in
+        # the (4, L0, L1, L2, L3, NC, NC) link layout the time axis is axis 4
+        # and the site-field layout is (L0, L1, L2, L3, NC, NC) with time on
+        # axis 3.
         U = get_random_field(seed=SEED + 16)
-        n_t = U.shape[1]
+        n_t = U.shape[4]
         h_slice = np.zeros(U.shape[1:], dtype=np.complex128)
         for t in range(n_t):
-            h_slice[t] = np.exp(2j * np.pi / 3 * (t % 3)) * np.eye(g.NC)
+            z = np.exp(2j * np.pi / 3 * (t % 3))
+            h_slice[..., t, :, :] = z * np.eye(g.NC)
         gt, U_fixed, _ = self.check_fix(g.fix_coulomb_gauge, U)
         U_fixed_center = g.apply_gauge_transform(U, gt @ h_slice)
-        # Only the spatial links enter the Coulomb functional.
-        self.assertLess(get_max_difference(U_fixed[1:], U_fixed_center[1:]), 1e-12)
+        # Only the spatial links (directions 0, 1, 2) enter the Coulomb
+        # functional, and a center element cancels in g U g^dagger.
+        self.assertLess(get_max_difference(U_fixed[:3], U_fixed_center[:3]), 1e-12)
+        # The transform really differs, so this is not a vacuous test.
+        self.assertGreater(get_max_difference(gt, gt @ h_slice), 1.0)
         self.assertLessEqual(
             max(g.get_coulomb_divergence_list(U_fixed_center)),
             EPS * np.sqrt(n_t),
@@ -180,7 +205,7 @@ class TestAccumulatedTransform(GaugeTestCase):
         U = get_random_field(seed=SEED + 15)
         for fix, dirs in (
             (g.fix_landau_gauge, (0, 1, 2, 3)),
-            (g.fix_coulomb_gauge, (1, 2, 3)),
+            (g.fix_coulomb_gauge, (0, 1, 2)),
         ):
             gt_internal, _, info_internal = g._fix_gauge(
                 U,
