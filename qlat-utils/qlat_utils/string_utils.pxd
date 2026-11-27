@@ -13,5 +13,9 @@ cdef inline bytes as_bytes(object x):
 cdef inline str as_str_std(const std_string& s):
     return s.decode('utf-8')
 
+cdef inline bytes as_bytes_std(const std_string& s):
+    # Binary-safe std::string -> bytes; keeps embedded NUL bytes.
+    return s.data()[:s.size()]
+
 cdef inline str as_str_c(const char* s):
     return (<bytes>s).decode('utf-8')

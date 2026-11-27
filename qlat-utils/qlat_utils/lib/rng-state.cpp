@@ -29,6 +29,7 @@
 #include <cstring>
 #include <istream>
 #include <ostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -114,6 +115,85 @@ void importRngState(RngState& rs, const std::vector<uint32_t>& v)
   importRngState(rs, v.data());
 }
 
+const char* RNG_STATE_BYTES_MAGIC = "QLATRNG";
+
+const unsigned char RNG_STATE_BYTES_VERSION = 0x01;
+
+static void append_uint32_le(std::string& data, const uint32_t x)
+{
+  data += (char)(x & 0xFF);
+  data += (char)((x >> 8) & 0xFF);
+  data += (char)((x >> 16) & 0xFF);
+  data += (char)((x >> 24) & 0xFF);
+}
+
+static uint32_t read_uint32_le(const unsigned char* p)
+{
+  return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
+         ((uint32_t)p[3] << 24);
+}
+
+std::string get_rng_state_bytes(const RngState& rs)
+//  Serialize the complete state (hash, byte counter, type, index, word cache
+//  and Box-Muller cache) so that a restored state continues the identical
+//  stream.
+{
+  std::vector<uint32_t> v(RNG_STATE_NUM_OF_INT32);
+  exportRngState(v, rs);
+  std::string data;
+  data.reserve(RNG_STATE_BYTES_SIZE);
+  data.append(RNG_STATE_BYTES_MAGIC, RNG_STATE_BYTES_HEADER_SIZE - 1);
+  data += (char)RNG_STATE_BYTES_VERSION;
+  for (size_t i = 0; i < v.size(); ++i) {
+    append_uint32_le(data, v[i]);
+  }
+  qassert(RNG_STATE_BYTES_SIZE == data.size());
+  return data;
+}
+
+void set_rng_state_bytes(RngState& rs, const std::string& data)
+//  Restore a state written by get_rng_state_bytes().
+//  Validates everything BEFORE assigning, so a malformed ``data`` leaves ``rs``
+//  untouched.  Throws std::invalid_argument (Cython maps it to ValueError).
+{
+  if (RNG_STATE_BYTES_SIZE != data.size()) {
+    throw std::invalid_argument(ssprintf(
+        "RngState.set_state: expected %lu bytes, got %lu",
+        (unsigned long)RNG_STATE_BYTES_SIZE, (unsigned long)data.size()));
+  }
+  if (0 != std::memcmp(data.data(), RNG_STATE_BYTES_MAGIC,
+                       RNG_STATE_BYTES_HEADER_SIZE - 1)) {
+    throw std::invalid_argument(std::string("RngState.set_state: bad magic ") +
+                                "(expected \"QLATRNG\")");
+  }
+  const unsigned char version =
+      (unsigned char)data[RNG_STATE_BYTES_HEADER_SIZE - 1];
+  if (RNG_STATE_BYTES_VERSION != version) {
+    throw std::invalid_argument(
+        ssprintf("RngState.set_state: unsupported version %d (expected %d)",
+                 (int)version, (int)RNG_STATE_BYTES_VERSION));
+  }
+  std::vector<uint32_t> v(RNG_STATE_NUM_OF_INT32);
+  const unsigned char* p =
+      (const unsigned char*)data.data() + RNG_STATE_BYTES_HEADER_SIZE;
+  for (size_t i = 0; i < v.size(); ++i) {
+    v[i] = read_uint32_le(p + 4 * i);
+  }
+  if (3 < v[22]) {
+    throw std::invalid_argument(
+        ssprintf("RngState.set_state: invalid cacheAvail %u (expected 0..3)",
+                 (unsigned)v[22]));
+  }
+  if (1 < v[23]) {
+    throw std::invalid_argument(ssprintf(
+        "RngState.set_state: invalid gaussianAvail %u (expected 0 or 1)",
+        (unsigned)v[23]));
+  }
+  RngState rs_new;
+  importRngState(rs_new, v);
+  rs = rs_new;
+}
+
 std::ostream& operator<<(std::ostream& os, const RngState& rs)
 {
   std::vector<uint32_t> v(RNG_STATE_NUM_OF_INT32);
@@ -176,12 +256,18 @@ void split_rng_state(RngState& rs, const RngState& rs0,
 // will not affect old rng ``rs0''
 // the function should behave correctly even if ``rs'' is actually ``rs0''
 {
+  // The label is a byte string: ``sindex'' is appended verbatim (not through
+  // printf's "%s" on c_str(), which would cut it at an embedded NUL byte), so
+  // that every byte of the label participates in the hash.  The prefix format
+  // is unchanged, so labels without a NUL byte hash exactly as before.
   std::string data;
   if (ULONG_MAX == rs0.type) {
-    data = ssprintf("[%lu] {%s}", rs0.index, sindex.c_str());
+    data = ssprintf("[%lu] {", rs0.index);
   } else {
-    data = ssprintf("[%lu,%lu] {%s}", rs0.type, rs0.index, sindex.c_str());
+    data = ssprintf("[%lu,%lu] {", rs0.type, rs0.index);
   }
+  data += sindex;
+  data += "}";
   const Int nBlocks = (data.length() - 1) / 64 + 1;
   data.resize(nBlocks * 64, ' ');
   sha256::processBlock(rs.hash, rs0.hash, (const uint8_t*)data.c_str());
@@ -237,7 +323,9 @@ uint64_t rand_gen(RngState& rs)
   }
 }
 
-RealD u_rand_gen(RngState& rs, const RealD upper, const RealD lower)
+RealD u_rand_gen(RngState& rs, const RealD lower, const RealD upper)
+//  Uniform random number in [lower, upper) for lower < upper.
+//  The (lower, upper) argument order matches std::uniform_real_distribution.
 {
   uint64_t u = rand_gen(rs);
   const RealD fac =
@@ -258,8 +346,8 @@ RealD g_rand_gen(RngState& rs, const RealD center, const RealD sigma)
     Int num_try = 1;
     RealD v1, v2, rsq;
     do {
-      v1 = u_rand_gen(rs, 1.0, -1.0);
-      v2 = u_rand_gen(rs, 1.0, -1.0);
+      v1 = u_rand_gen(rs, -1.0, 1.0);
+      v2 = u_rand_gen(rs, -1.0, 1.0);
       if ((num_try % 1000) == 0) {
         printf("WARNING: g_rand_gen: num_try=%d v1=%e v2=%e\n", num_try, v1,
                v2);

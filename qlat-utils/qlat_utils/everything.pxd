@@ -343,7 +343,9 @@ cdef extern from "qlat-utils/rng-state.h" namespace "qlat":
         RngState split(const std_string& sindex) except +
         RngState newtype(const unsigned long type) except +
     uint64_t rand_gen(RngState& rs) except +
-    RealD u_rand_gen(RngState& rs, const RealD upper, const RealD lower) except +
+    RealD u_rand_gen(RngState& rs, const RealD lower, const RealD upper) except +
+    std_string get_rng_state_bytes(const RngState& rs) except +
+    void set_rng_state_bytes(RngState& rs, const std_string& data) except +
     RealD g_rand_gen(RngState& rs, const RealD center, const RealD sigma) except +
     void random_permute[T](std_vector[T]& vec, const RngState& rs) except +
 

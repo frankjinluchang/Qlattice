@@ -335,8 +335,8 @@ qacc array<M, N> operator-(const array<M, N>& v1, const array<M, N>& v2)
 }
 
 template <class M>
-void set_u_rand(Vector<M> v, const RngState& rs, const RealD upper = 1.0,
-                const RealD lower = -1.0)
+void set_u_rand(Vector<M> v, const RngState& rs, const RealD lower = -1.0,
+                const RealD upper = 1.0)
 {
   if (not is_composed_of_real<M>()) {
     qassert(is_composed_of_real<M>());
@@ -346,7 +346,7 @@ void set_u_rand(Vector<M> v, const RngState& rs, const RealD upper = 1.0,
   RngState rsi = rs;
   Vector<Real> dv((Real*)v.data(), v.data_size() / sizeof(Real));
   for (Int m = 0; m < dv.size(); ++m) {
-    dv[m] = u_rand_gen(rsi, upper, lower);
+    dv[m] = u_rand_gen(rsi, lower, upper);
   }
 }
 

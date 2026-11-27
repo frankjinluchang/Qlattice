@@ -117,7 +117,7 @@ class RngState:
     def copy(self, is_copying_data = True):
     def split(self, seed):
     def rand_gen(self):
-    def u_rand_gen(self, upper = 1.0, lower = 0.0):
+    def u_rand_gen(self, lower = 0.0, upper = 1.0):
     def g_rand_gen(self, center = 0.0, sigma = 1.0):
     def c_rand_gen(self, size):
         # size can be total_site of the lattice

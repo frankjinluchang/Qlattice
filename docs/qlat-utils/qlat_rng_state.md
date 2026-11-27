@@ -15,6 +15,7 @@ Source: `qlat-utils/qlat_utils/rng_state.pyx`
    - [Scalar Random Generators](#scalar-random-generators)
    - [Array Random Generators](#array-random-generators)
    - [Selection and Permutation Helpers](#selection-and-permutation-helpers)
+   - [State Export, Restore and Pickling](#state-export-restore-and-pickling)
 4. [Module-Level Utility Functions](#module-level-utility-functions)
 5. [C++ Internals Reference](#c-internals-reference)
 6. [Examples](#examples)
@@ -113,6 +114,41 @@ rs3 = q.RngState(rs1)        # copy of rs1
 rs4 = q.RngState(rs1, "sub") # split child of rs1 with label "sub"
 ```
 
+#### Seed and label byte semantics
+
+A seed or split label is a **byte string**, not a C string:
+
+| Argument type | Meaning |
+|---|---|
+| `str` | Encoded as UTF-8, so its bytes (including any embedded NUL) are hashed. |
+| `bytes` | Used **verbatim** as the label bytes; no decoding, so a non-UTF-8 label such as `b"\xff"` is valid. |
+| other (e.g. `int`) | Rendered with `str()` first, e.g. `RngState(42)` seeds with `"42"`. |
+
+Argument validation raises explicit exceptions (`TypeError` / `ValueError`), so
+it is active in every mode, including `python -O` (it used to rely on bare
+`assert`s, which `-O` silently removed).
+
+Key consequences, covered by the `examples-py/utils.py` regression test:
+
+- **An embedded NUL byte is significant.** `RngState("a\0bcdefg")` is
+  *different* from `RngState("a")` — the whole label contributes to the
+  SHA-256 hash. Before qlat-issue-1 was fixed, the label was formatted with
+  `printf("%s", label.c_str())`, which silently truncated it at the first NUL
+  byte and made such seeds collide.
+- **A `bytes` seed is raw label bytes**, the same as `split()` already did.
+  `RngState(b"abc")` equals `RngState("abc")`. Before qlat-issue-6 was fixed,
+  the constructor went through `str(x)` and hashed the *`repr`* (`"b'abc'"`)
+  instead.
+- Labels **without** a NUL byte hash exactly as they always did, so existing
+  seeds and split trees are unchanged.
+
+```python
+q.RngState("a\0bcdefg") == q.RngState("a")      # False (used to be True)
+q.RngState(b"abc") == q.RngState("abc")           # True
+q.RngState(b"abc") == q.RngState("b'abc'")        # False (used to be True)
+q.RngState(b"\xff")                               # valid: raw non-UTF-8 label
+```
+
 ---
 
 ### Copying and Assignment
@@ -142,11 +178,14 @@ rs1 @= rs2   # rs1 now has identical state to rs2
 
 ### Splitting
 
-#### `split(seed: str) -> RngState`
+#### `split(seed: str | bytes) -> RngState`
 
 Produce a new `RngState` deterministically derived from `self` and `seed`.
 The child is fully independent of the parent and of all other children with
-different seeds.
+different seeds. `str` is encoded as UTF-8 and `bytes` is used verbatim (see
+[Seed and label byte semantics](#seed-and-label-byte-semantics)), so labels
+containing NUL or non-UTF-8 bytes are distinct and participate fully in the
+hash.
 
 ```python
 rs_root = q.RngState("experiment-1")
@@ -180,13 +219,18 @@ Generate a uniformly distributed random integer in `[0, 2^64 - 1]`.
 r = rs.rand_gen()   # e.g. 14873649204851673523
 ```
 
-#### `u_rand_gen(upper=1.0, lower=0.0) -> float`
+#### `u_rand_gen(lower=0.0, upper=1.0) -> float`
 
 Generate a uniformly distributed random `float64` in `[lower, upper)`.
 
+The argument order is `(lower, upper)`, matching `numpy.random.uniform` and
+`std::uniform_real_distribution`. It used to be `(upper, lower)`, so positional
+calls written against the old signature must swap their two arguments; calls
+that pass `lower=` / `upper=` by keyword keep their meaning.
+
 ```python
 x = rs.u_rand_gen()          # uniform in [0.0, 1.0)
-x = rs.u_rand_gen(5.0, 2.0) # uniform in [2.0, 5.0)
+x = rs.u_rand_gen(2.0, 5.0)  # uniform in [2.0, 5.0)
 ```
 
 #### `g_rand_gen(center=0.0, sigma=1.0) -> float`
@@ -216,6 +260,16 @@ coord = rs.c_rand_gen(total_site)  # e.g. Coordinate((7, 3, 5, 2))
 ### Array Random Generators
 
 These return NumPy arrays filled with random values of the specified shape.
+
+> **Removed in this release:** the obsolete `u_rand_fill` / `g_rand_fill`
+> family (`u_rand_fill`, `g_rand_fill`, `u_rand_fill_real_d`,
+> `g_rand_fill_real_d`, `rand_fill_u_long`) is **no longer part of the Python
+> API**. Those methods reinterpreted an arbitrary buffer as `float64` and could
+> silently corrupt a non-`float64` array, and they required the argument to be a
+> view. Use `rand_arr` / `u_rand_arr` / `g_rand_arr` and do the arithmetic in
+> NumPy, e.g. `rs.u_rand_arr(shape) * (upper - lower) + lower`.
+> `Field.set_rand` / `Field.set_rand_g` keep the old bound order and still do
+> this internally.
 
 #### `rand_arr(shape) -> np.ndarray`
 
@@ -248,13 +302,69 @@ arr = rs.g_rand_arr((8, 8, 8, 8))  # 4D lattice of N(0,1) values
 
 ### Selection and Permutation Helpers
 
-#### `select(l: list) -> Any`
+#### `select(seq) -> Any`
 
-Pick and return a uniformly random element from list `l`.
+Pick and return a uniformly random element of `seq`. Any **sized and indexable**
+sequence works: a `list`, `tuple`, `range`, `numpy.ndarray`, `str`, or a custom
+object implementing `__len__` and `__getitem__` (this used to require a `list`).
+The element is returned exactly as `seq[index]` would give it, so an `ndarray`
+input yields a NumPy scalar.
+
+Exactly one `rand_gen()` draw is consumed per call, independently of the
+container type, so the same seed chooses the same index for any container of
+the same length.
+
+Errors: `TypeError` when `seq` has no length or is not indexable (e.g. `None`,
+an `int`); `ValueError` when `seq` is empty.
 
 ```python
 sites = [(0,0,0,0), (1,1,1,1), (2,2,2,2)]
 chosen = rs.select(sites)
+chosen = rs.select(range(16))          # any sized/indexable sequence
+chosen = rs.select(np.arange(16))      # NumPy scalar returned
+```
+
+#### `get_state() -> bytes` / `set_state(state)`
+
+`get_state()` serializes the **complete** generator state — the SHA-256 chaining
+value, the byte counter, `type`, `index`, the three-word output cache and the
+Box-Muller Gaussian cache — into 104 bytes. `set_state()` restores it exactly,
+so the restored generator continues the *identical* stream, including a pending
+cached Gaussian.
+
+The layout is versioned and shared with `qlat_ref` (a state written by one
+package can be restored by the other):
+
+| Offset | Size | Content |
+|---|---|---|
+| 0 | 7 | magic `b"QLATRNG"` |
+| 7 | 1 | version `0x01` |
+| 8 | 96 | 24 little-endian `uint32` words, in C++ `exportRngState` order |
+
+The 24 words are `numBytes` (high, low), `hash[0..7]`, `type` (high, low),
+`index` (high, low), `cache[0..2]` (high, low each), the `gaussian` bit pattern
+(high, low), `cacheAvail` and `gaussianAvail`.
+
+`set_state()` accepts `bytes`, `bytearray`, `memoryview` or any buffer-like
+object and validates length, magic, version and the two small integer fields
+**before** mutating the generator: a malformed state raises `ValueError` and
+leaves the generator untouched.
+
+```python
+state = rs.get_state()          # bytes, length 104
+rs2 = q.RngState()
+rs2.set_state(state)            # continues rs's stream exactly
+```
+
+#### `pickle` support
+
+`RngState` pickles via `__reduce__`/`__setstate__`, so a round-trip yields an
+**independent** copy on the same stream:
+
+```python
+import pickle
+rs3 = pickle.loads(pickle.dumps(rs))
+assert rs3.rand_gen() == rs.rand_gen()   # same next value
 ```
 
 ---
@@ -316,9 +426,12 @@ struct RngState {
 | `void split_rng_state(RngState& rs, const RngState& rs0, const Long sindex)` | Same, with integer label |
 | `void set_type(RngState& rs, const uint64_t type)` | Set the type tag (must be unset) |
 | `uint64_t rand_gen(RngState& rs)` | Return uniform `uint64` |
-| `RealD u_rand_gen(RngState& rs, RealD upper, RealD lower)` | Uniform `RealD` in `[lower, upper)` |
+| `RealD u_rand_gen(RngState& rs, RealD lower, RealD upper)` | Uniform `RealD` in `[lower, upper)` |
 | `RealD g_rand_gen(RngState& rs, RealD center, RealD sigma)` | Gaussian `RealD` |
 | `void compute_hash_with_input(uint32_t hash[8], const RngState& rs, const std::string& input)` | Core SHA-256 computation |
+| `std::string get_rng_state_bytes(const RngState& rs)` | Serialize the full state to the 104-byte format |
+| `void set_rng_state_bytes(RngState& rs, const std::string& data)` | Restore it; throws `std::invalid_argument` (maps to Python `ValueError`) on a malformed blob |
+| `void exportRngState(uint32_t* v, const RngState& rs)` / `void importRngState(RngState& rs, const uint32_t* v)` | The 24-word state transfer used by the above and by `operator<<`/`>>` |
 
 ### Member Functions
 
