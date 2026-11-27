@@ -34,7 +34,9 @@ ld = q.mk_lat_data(info_list)
 
 q.displayln_info(ld.info())
 
-rs.copy().g_rand_fill(np.asarray(ld).ravel())
+ld_view = np.asarray(ld).ravel().view(np.float64)
+ld_view[...] = rs.copy().g_rand_arr(ld_view.shape)
+del ld_view
 
 arr = ld.to_numpy()
 

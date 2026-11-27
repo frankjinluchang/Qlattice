@@ -16,5 +16,77 @@
  ],
  [
   "explicit Geometry(id, size, node) = [4, 4, 4, 4]"
+ ],
+ [
+  "Geometry() total_site = [0, 0, 0, 0]"
+ ],
+ [
+  "Geometry() node_site = [0, 0, 0, 0]"
+ ],
+ [
+  "Geometry() size_node = [0, 0, 0, 0]"
+ ],
+ [
+  "Geometry() coor_node = [0, 0, 0, 0]"
+ ],
+ [
+  "Geometry() expansion_left = [0, 0, 0, 0]"
+ ],
+ [
+  "Geometry() expansion_right = [0, 0, 0, 0]"
+ ],
+ [
+  "Geometry() num_node = 0"
+ ],
+ [
+  "Geometry() id_node = 0"
+ ],
+ [
+  "Geometry() eo = 0"
+ ],
+ [
+  "Geometry() is_only_local = False"
+ ],
+ [
+  "Geometry() spatial_volume = 0"
+ ],
+ [
+  "Geometry() local_volume = 0"
+ ],
+ [
+  "Geometry() local_volume_expanded = 0"
+ ],
+ [
+  "Geometry() show = Geometry([0, 0, 0, 0])"
+ ],
+ [
+  "Geometry() == fresh Geometry() = True"
+ ],
+ [
+  "Geometry() copy() == Geometry() = True"
+ ],
+ [
+  "Geometry() coordinate_from_index(0) = [0, 0, 0, 0]"
+ ],
+ [
+  "Geometry() g_coordinate_from_index(0) = [0, 0, 0, 0]"
+ ],
+ [
+  "Geometry() xg_arr shape = [0, 4]"
+ ],
+ [
+  "zero-extent Geometry total_site = [4, 4, 4, 0]"
+ ],
+ [
+  "zero-extent Geometry num_node = 1"
+ ],
+ [
+  "zero-extent Geometry total_volume = 0"
+ ],
+ [
+  "zero-extent Geometry spatial_volume = 0"
+ ],
+ [
+  "zero-extent Geometry local_volume = 0"
  ]
 ]

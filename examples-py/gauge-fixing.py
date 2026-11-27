@@ -171,6 +171,82 @@ def check_distributed_field(fname, geo):
     q.json_results_append(f"{fname}: local_volume = {geo.local_volume}")
     q.json_results_append(f"{fname}: total_volume = {geo.total_volume}")
 
+def check_unitarity_error_accepted_types(fname, geo, rs):
+    # `get_unitarity_error` is defined by the matrix content alone, so it must
+    # accept a GaugeTransform as well as a GaugeField (qlat-issue-11), and it
+    # must reject the types where the number would be meaningless.
+    scale = 1.01
+    gf = q.GaugeField(geo)
+    gf.set_unit()
+    # A transform and a gauge field built from the same explicit matrices: the
+    # error is analytic, so the check does not depend on the RNG at all.
+    gt_scaled = q.GaugeTransform(geo)
+    np.asarray(gt_scaled)[...] = scale * np.eye(3, dtype=np.complex128)
+    gf_scaled = q.GaugeField(geo)
+    arr_gf_scaled = np.asarray(gf_scaled)
+    arr_gt_scaled = np.asarray(gt_scaled)
+    for mu in range(4):
+        arr_gf_scaled[:, mu] = arr_gt_scaled[:, 0]
+    err_gf_unit = q.get_unitarity_error(gf)
+    err_gt_scaled = q.get_unitarity_error(gt_scaled)
+    err_gf_scaled = q.get_unitarity_error(gf_scaled)
+    q.displayln_info(
+        f"{fname}: unitarity: GaugeField(unit) = {err_gf_unit:.3e};"
+        f" GaugeTransform({scale} * 1) = {err_gt_scaled:.3e};"
+        f" GaugeField(same matrices) = {err_gf_scaled:.3e}"
+    )
+    # An exactly unitary field has exactly zero error, and the returned value
+    # is a plain float (not an array).
+    assert err_gf_unit == 0.0
+    assert isinstance(err_gt_scaled, float)
+    # |c^2 - 1| for a uniformly scaled unit matrix, to round-off.
+    assert abs(err_gt_scaled - abs(scale**2 - 1.0)) < 1.0e-14
+    assert err_gt_scaled > 1.0e-2
+    # Same content -> bit-identical value: the two functions differ only in the
+    # field type they accept, not in the arithmetic they perform.
+    assert err_gf_scaled == err_gt_scaled
+    # A random near-identity transform is unitary to round-off, like a gauge
+    # field, and so is a gauge-fixed field and its accumulated transform.
+    gt_rand = q.GaugeTransform(geo)
+    gt_rand.set_rand(rs.split("gt-unitarity"), 0.5, 1)
+    err_gt_rand = q.get_unitarity_error(gt_rand)
+    gf_rand = q.GaugeField(geo)
+    gf_rand.set_rand(rs.split("gf-unitarity"), 0.5, 1)
+    gt_fix, info_fix = q.fix_landau_gauge(
+        gf_rand, max_iter=MAX_ITER, eps=EPS, alpha=ALPHA
+    )
+    assert info_fix["converged"]
+    err_fixed_field = q.get_unitarity_error(gt_fix * gf_rand)
+    err_fixed_transform = q.get_unitarity_error(gt_fix)
+    q.displayln_info(
+        f"{fname}: unitarity: random transform = {err_gt_rand:.3e};"
+        f" fixed field = {err_fixed_field:.3e};"
+        f" fixed transform = {err_fixed_transform:.3e}"
+    )
+    assert err_gt_rand <= 1.0e-10
+    assert err_fixed_field <= 1.0e-10
+    assert err_fixed_transform <= 1.0e-10
+    # The meaningless types are rejected with a clear TypeError.
+    gm = q.GaugeMomentum(geo)
+    rejected = 0
+    for obj in (gm, np.asarray(gf_rand), np.eye(3)):
+        try:
+            q.get_unitarity_error(obj)
+        except TypeError:
+            rejected += 1
+    assert rejected == 3
+    q.json_results_append(f"{fname}: unitarity GaugeField(unit)", err_gf_unit, 0.0)
+    q.json_results_append(f"{fname}: unitarity GaugeTransform", err_gt_scaled, 1.0e-10)
+    q.json_results_append(
+        f"{fname}: unitarity GaugeField(same matrices)", err_gf_scaled, 1.0e-10
+    )
+    q.json_results_append(f"{fname}: unitarity random transform", err_gt_rand, 1.0e-10)
+    q.json_results_append(f"{fname}: unitarity fixed field", err_fixed_field, 1.0e-10)
+    q.json_results_append(
+        f"{fname}: unitarity fixed transform", err_fixed_transform, 1.0e-10
+    )
+    q.json_results_append(f"{fname}: unitarity rejected types = {rejected}")
+
 def main():
     fname = q.get_fname()
     q.begin_with_mpi(size_node_list)
@@ -181,6 +257,7 @@ def main():
     check_landau_gauge_fixing(fname, geo, rs)
     check_coulomb_gauge_fixing(fname, geo, rs)
     check_distributed_field(fname, geo)
+    check_unitarity_error_accepted_types(fname, geo, rs)
     q.timer_display()
     if q.is_test():
         q.check_log_json(__file__, check_eps=1.0e-10)

@@ -37,7 +37,8 @@ def make_rnd_sm(rs: q.RngState):
         ),
         dtype=np.complex128,
     )
-    rs.u_rand_fill(x, 1.0, -1.0)
+    xv = np.asarray(x).ravel().view(np.float64)
+    xv[...] = 2.0 * rs.u_rand_arr(xv.shape) - 1.0
     return x
 
 def make_rnd_cm(rs: q.RngState):
@@ -48,7 +49,8 @@ def make_rnd_cm(rs: q.RngState):
         ),
         dtype=np.complex128,
     )
-    rs.u_rand_fill(x, 1.0, -1.0)
+    xv = np.asarray(x).ravel().view(np.float64)
+    xv[...] = 2.0 * rs.u_rand_arr(xv.shape) - 1.0
     return x
 
 def make_rnd_wm(rs: q.RngState):
@@ -61,7 +63,8 @@ def make_rnd_wm(rs: q.RngState):
         ),
         dtype=np.complex128,
     )
-    rs.u_rand_fill(x, 1.0, -1.0)
+    xv = np.asarray(x).ravel().view(np.float64)
+    xv[...] = 2.0 * rs.u_rand_arr(xv.shape) - 1.0
     return x
 
 sm1 = make_rnd_sm(q.RngState("seed-sm1"))

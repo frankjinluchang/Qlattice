@@ -28,19 +28,22 @@ q.begin_with_mpi()
 def make_rnd_sm(rs: q.RngState):
     sm = q.SpinMatrix()
     x = np.asarray(sm)
-    rs.u_rand_fill(x, 1.0, -1.0)
+    xv = np.asarray(x).ravel().view(np.float64)
+    xv[...] = 2.0 * rs.u_rand_arr(xv.shape) - 1.0
     return sm
 
 def make_rnd_cm(rs: q.RngState):
     cm = q.ColorMatrix()
     x = np.asarray(cm)
-    rs.u_rand_fill(x, 1.0, -1.0)
+    xv = np.asarray(x).ravel().view(np.float64)
+    xv[...] = 2.0 * rs.u_rand_arr(xv.shape) - 1.0
     return cm
 
 def make_rnd_wm(rs: q.RngState):
     wm = q.WilsonMatrix()
     x = np.asarray(wm)
-    rs.u_rand_fill(x, 1.0, -1.0)
+    xv = np.asarray(x).ravel().view(np.float64)
+    xv[...] = 2.0 * rs.u_rand_arr(xv.shape) - 1.0
     return wm
 
 sm1 = make_rnd_sm(q.RngState("seed-sm1"))

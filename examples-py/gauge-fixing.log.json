@@ -9,7 +9,7 @@
  ],
  [
   "main: landau plaq after",
-  0.21420214469162185,
+  0.21420214469162177,
   1e-10
  ],
  [
@@ -29,7 +29,7 @@
  ],
  [
   "main: coulomb plaq after",
-  0.251298207557418,
+  0.25129820755741783,
   1e-10
  ],
  [
@@ -50,5 +50,38 @@
  ],
  [
   "main: total_volume = 256"
+ ],
+ [
+  "main: unitarity GaugeField(unit)",
+  0.0,
+  0.0
+ ],
+ [
+  "main: unitarity GaugeTransform",
+  0.020100000000000007,
+  1e-10
+ ],
+ [
+  "main: unitarity GaugeField(same matrices)",
+  0.020100000000000007,
+  1e-10
+ ],
+ [
+  "main: unitarity random transform",
+  8.881784197001252e-16,
+  1e-10
+ ],
+ [
+  "main: unitarity fixed field",
+  8.548717289613705e-15,
+  1e-10
+ ],
+ [
+  "main: unitarity fixed transform",
+  5.10702591327572e-15,
+  1e-10
+ ],
+ [
+  "main: unitarity rejected types = 3"
  ]
 ]

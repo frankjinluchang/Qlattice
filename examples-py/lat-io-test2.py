@@ -31,7 +31,9 @@ info_list = [
 ]
 
 ld = q.mk_lat_data(info_list)
-rs.copy().g_rand_fill(np.asarray(ld).ravel())
+ld_view = np.asarray(ld).ravel().view(np.float64)
+ld_view[...] = rs.copy().g_rand_arr(ld_view.shape)
+del ld_view
 q.json_results_append("lat-io-test2: v0 qnorm", ld.qnorm())
 q.json_results_append(f"lat-io-test2: v0 ndim={ld.ndim()}")
 q.json_results_append(f"lat-io-test2: v0 dim_sizes={ld.dim_sizes()}")
@@ -47,14 +49,18 @@ ld.save("results/v1.lat")
 ld = q.load_lat_data("results/v1.lat")
 q.json_results_append(f"lat-io-test2: v2 info={ld.info()} is_complex={ld.is_complex()}")
 q.json_results_append("lat-io-test2: v2 data_sig", q.get_data_sig(ld, rs.copy()), 1e-14)
-rs.copy().g_rand_fill(np.asarray(ld))
+ld_view = np.asarray(ld).ravel().view(np.float64)
+ld_view[...] = rs.copy().g_rand_arr(ld_view.shape)
+del ld_view
 q.json_results_append("lat-io-test2: v3 data_sig", q.get_data_sig(ld, rs.copy()), 1e-14)
 q.json_results_append(f"lat-io-test2: v3 info={ld.info()} is_complex={ld.is_complex()}")
 ld.save("results/v3.lat")
 ld = q.load_lat_data("results/v3.lat")
 q.json_results_append(f"lat-io-test2: v4 info={ld.info()} is_complex={ld.is_complex()}")
 q.json_results_append("lat-io-test2: v4 data_sig", q.get_data_sig(ld, rs.copy()), 1e-14)
-rs.copy().g_rand_fill(np.asarray(ld).ravel())
+ld_view = np.asarray(ld).ravel().view(np.float64)
+ld_view[...] = rs.copy().g_rand_arr(ld_view.shape)
+del ld_view
 arr = ld.to_numpy()
 ld.from_numpy(arr)
 q.json_results_append("lat-io-test2: v5 data_sig", q.get_data_sig(ld, rs.copy()), 1e-14)
@@ -67,7 +73,9 @@ ld.save("results/v6.lat")
 ld = q.load_lat_data("results/v6.lat")
 q.json_results_append(f"lat-io-test2: v7 info={ld.info()} is_complex={ld.is_complex()}")
 q.json_results_append("lat-io-test2: v7 data_sig", q.get_data_sig(ld, rs.copy()), 1e-14)
-rs.copy().g_rand_fill(np.asarray(ld))
+ld_view = np.asarray(ld).ravel().view(np.float64)
+ld_view[...] = rs.copy().g_rand_arr(ld_view.shape)
+del ld_view
 q.json_results_append(f"lat-io-test2: v8 info={ld.info()} is_complex={ld.is_complex()}")
 q.json_results_append("lat-io-test2: v8 data_sig", q.get_data_sig(ld, rs.copy()), 1e-14)
 ld.save("results/v8.lat")
@@ -96,7 +104,9 @@ q.json_results_append(
 q.json_results_append(
     "lat-io-test2: v10 data_sig", q.get_data_sig(ld, rs.copy()), 1e-14
 )
-rs.copy().g_rand_fill(np.asarray(ld))
+ld_view = np.asarray(ld).ravel().view(np.float64)
+ld_view[...] = rs.copy().g_rand_arr(ld_view.shape)
+del ld_view
 q.json_results_append(
     f"lat-io-test2: v11 info={ld.info()} is_complex={ld.is_complex()}"
 )
@@ -141,7 +151,9 @@ q.json_results_append(
 q.json_results_append(
     "lat-io-test2: v15 data_sig", q.get_data_sig(ld, rs.copy()), 1e-14
 )
-rs.copy().g_rand_fill(np.asarray(ld))
+ld_view = np.asarray(ld).ravel().view(np.float64)
+ld_view[...] = rs.copy().g_rand_arr(ld_view.shape)
+del ld_view
 q.json_results_append(
     f"lat-io-test2: v16 info={ld.info()} is_complex={ld.is_complex()}"
 )
@@ -166,7 +178,9 @@ q.json_results_append(
 q.json_results_append(
     "lat-io-test2: v18 data_sig", q.get_data_sig(ld, rs.copy()), 1e-14
 )
-rs.copy().g_rand_fill(np.asarray(ld))
+ld_view = np.asarray(ld).ravel().view(np.float64)
+ld_view[...] = rs.copy().g_rand_arr(ld_view.shape)
+del ld_view
 q.json_results_append(
     f"lat-io-test2: v19 info={ld.info()} is_complex={ld.is_complex()}"
 )
