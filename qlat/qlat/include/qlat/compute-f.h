@@ -391,7 +391,7 @@ inline void test_fderiv()
   for (Long i = 0; i < size; ++i) {
     CoordinateD c;
     for (Int mu = 0; mu < 4; ++mu) {
-      c[mu] = u_rand_gen(rs, high, low);
+      c[mu] = u_rand_gen(rs, low, high);
     }
     const RealD len = coordinate_len(c);
     const RealD f1 = f1xxCalc(c);

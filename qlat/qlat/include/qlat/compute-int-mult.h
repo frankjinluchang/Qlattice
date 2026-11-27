@@ -135,8 +135,8 @@ inline void profile_computeIntMult()
   for (Int i = 0; i < size; ++i) {
     CoordinateD x, y;
     for (Int m = 0; m < 4; ++m) {
-      x[m] = u_rand_gen(rs, high, low);
-      y[m] = u_rand_gen(rs, high, low);
+      x[m] = u_rand_gen(rs, low, high);
+      y[m] = u_rand_gen(rs, low, high);
     }
     DisplayInfo("", fname.c_str(), "x =%s\n", show(x).c_str());
     DisplayInfo("", fname.c_str(), "y =%s\n", show(y).c_str());

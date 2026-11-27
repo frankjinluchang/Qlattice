@@ -140,6 +140,24 @@ def get_gauge_divergence(GaugeField gf, dirs):
         c_dirs.push_back(mu)
     return gf_gauge_divergence(gf.xxx().val(), c_dirs)
 
-def get_unitarity_error(GaugeField gf):
-    """Return the maximal ``|U U^dagger - 1|`` matrix element of the field."""
-    return gf_gauge_unitarity_error(gf.xxx().val())
+def get_unitarity_error(gf):
+    """
+    Return the maximal ``|U U^dagger - 1|`` matrix element of the field.\n
+    ``gf`` is a :class:`~qlat.qcd.GaugeField` (the maximal deviation is taken
+    over all sites and all ``4`` link directions) or a
+    :class:`~qlat.qcd.GaugeTransform` (over all sites; a gauge transformation
+    holds one matrix per site).  The operation is the same for both: it only
+    needs a field of ``ColorMatrix`` elements.\n
+    Any other type (a ``GaugeMomentum``, a raw array, a plain list, ...) is
+    rejected with ``TypeError``: the check is defined on gauge fields and gauge
+    transformations, and silently accepting an arbitrary matrix field would
+    hide a type error at the call site.
+    """
+    if isinstance(gf, GaugeField):
+        return gf_gauge_unitarity_error((<GaugeField>gf).xxx().val())
+    if isinstance(gf, GaugeTransform):
+        return gf_gauge_unitarity_error((<GaugeTransform>gf).xxx().val())
+    raise TypeError(
+        "get_unitarity_error: expected a GaugeField or a GaugeTransform, got "
+        + type(gf).__name__
+    )

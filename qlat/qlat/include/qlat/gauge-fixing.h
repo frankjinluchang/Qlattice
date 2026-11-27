@@ -62,8 +62,12 @@ RealD gf_gauge_divergence_from_gradient(const Field<ColorMatrix>& D);
 
 RealD gf_gauge_divergence(const GaugeField& gf, const std::vector<Int>& dirs);
 
-// Maximal |(U U^dagger - 1)_{ij}| over all links and sites.
-RealD gf_gauge_unitarity_error(const GaugeField& gf);
+// Maximal |(U U^dagger - 1)_{ij}| over all matrices of a matrix field.
+// Defined for any `Field<ColorMatrix>`: a gauge field has multiplicity 4 (all
+// link directions), a gauge transformation multiplicity 1 (one matrix per
+// site), and the maximal deviation from the unit matrix is meaningful for
+// both.
+RealD gf_gauge_unitarity_error(const Field<ColorMatrix>& f);
 
 // Gauge-fix `gf` into the gauge transformation `gt`, leaving `gf` unmodified.
 // `gt * gf` is the gauge-fixed field.  `gt` is initialised by the callee.

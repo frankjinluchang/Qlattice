@@ -395,8 +395,8 @@ void field_glb_min(SelectedPoints<M>& sp, const Field<M>& f)
 
 template <class M, QLAT_ENABLE_IF(is_data_value_type<M>())>
 void set_u_rand(SelectedPoints<M>& sp, const PointsSelection& psel,
-                const RngState& rs, const RealD upper = 1.0,
-                const RealD lower = -1.0)
+                const RngState& rs, const RealD lower = -1.0,
+                const RealD upper = 1.0)
 {
   TIMER("set_u_rand(sp,psel,rs)");
   if (not is_composed_of_real<M>()) {
@@ -416,7 +416,7 @@ void set_u_rand(SelectedPoints<M>& sp, const PointsSelection& psel,
     Vector<M> v = sp.get_elems(idx);
     Vector<Real> dv((Real*)v.data(), v.data_size() / sizeof(Real));
     for (Int m = 0; m < dv.size(); ++m) {
-      dv[m] = u_rand_gen(rsi, upper, lower);
+      dv[m] = u_rand_gen(rsi, lower, upper);
     }
   });
 }
@@ -879,7 +879,7 @@ void load_selected_points_str(SelectedPoints<M>& sp, std::string& content,
                                                                               \
   QLAT_EXTERN template void set_u_rand<TYPENAME>(                             \
       SelectedPoints<TYPENAME> & sp, const PointsSelection& psel,             \
-      const RngState& rs, const RealD upper, const RealD lower);              \
+      const RngState& rs, const RealD lower, const RealD upper);              \
                                                                               \
   QLAT_EXTERN template void set_g_rand<TYPENAME>(                             \
       SelectedPoints<TYPENAME> & sp, const PointsSelection& psel,             \

@@ -13,9 +13,10 @@ Source: `qlat/qlat/geometry.pyx`
    - [Coordinate Mapping](#coordinate-mapping)
    - [Site Queries](#site-queries)
    - [Display and Pickle](#display-and-pickle)
-3. [`geo_resize` Function](#geo_resize-function)
-4. [`geo_eo` Function](#geo_eo-function)
-5. [Examples](#examples)
+3. [Empty Geometry — the Empty-But-Safe Contract](#empty-geometry--the-empty-but-safe-contract)
+4. [`geo_resize` Function](#geo_resize-function)
+5. [`geo_eo` Function](#geo_eo-function)
+6. [Examples](#examples)
 
 ---
 
@@ -59,7 +60,9 @@ q.end_with_mpi()
 
 #### `Geometry()`
 
-Create an uninitialized geometry.
+Create an empty but safe geometry: an uninitialized geometry node with all
+extents zero, zero volumes and no accessor that divides by a zero extent. See
+[Empty Geometry — the Empty-But-Safe Contract](#empty-geometry--the-empty-but-safe-contract).
 
 #### `Geometry(total_site: Coordinate)`
 
@@ -116,7 +119,8 @@ Total number of sites in the full lattice: `product(total_site)`.
 
 #### `spatial_volume -> int`
 
-Total number of spatial sites: `total_volume / total_site[3]`.
+Total number of spatial sites: `total_volume / total_site[3]`. Returns `0` for
+an empty geometry (zero time extent) instead of dividing by zero.
 
 #### `local_site -> Coordinate`
 
@@ -151,7 +155,8 @@ Linear index of this MPI process within the grid.
 
 #### `num_node -> int`
 
-Total number of MPI processes: `product(size_node)`.
+Total number of MPI processes: `product(size_node)`. `0` for an empty geometry,
+whose node grid is not initialized yet.
 
 #### `coor_node -> Coordinate`
 
@@ -200,7 +205,8 @@ local_volume()`.
 #### `coordinate_from_index(index: int) -> Coordinate`
 
 Map a linear site index back to a local coordinate. Inverse of
-`index_from_coordinate`.
+`index_from_coordinate`. Returns the zero coordinate for an empty geometry,
+which owns no site.
 
 #### `index_from_g_coordinate(xg: Coordinate) -> int`
 
@@ -210,7 +216,8 @@ Map a global coordinate to a local linear site index. Combines
 #### `g_coordinate_from_index(index: int) -> Coordinate`
 
 Map a local linear site index to a global coordinate. Combines
-`coordinate_from_index` and `coordinate_g_from_l`.
+`coordinate_from_index` and `coordinate_g_from_l`. Returns the zero coordinate
+for an empty geometry.
 
 ---
 
@@ -252,6 +259,68 @@ Geometry([4, 4, 4, 8], expan_left=[1, 1, 1, 1], expan_right=[1, 1, 1, 1], eo=0)
 Pickle support. The state is node-dependent: it includes `size_node`,
 `coor_node`, `node_site`, `expansion_left`, and `expansion_right`. Pickling
 and unpickling on different MPI grids may produce different geometries.
+
+---
+
+## Empty Geometry — the Empty-But-Safe Contract
+
+`Geometry()` with no arguments builds an **empty but safe** object. It is a
+valid `Geometry` whose global geometry node has not been initialized yet, so
+every lattice extent is zero:
+
+| Property | Value for `Geometry()` |
+|---|---|
+| `total_site` | `[0, 0, 0, 0]` |
+| `local_site`, `node_site` | `[0, 0, 0, 0]` |
+| `size_node` | `[0, 0, 0, 0]` (the node grid is not known yet) |
+| `coor_node` | `[0, 0, 0, 0]` |
+| `num_node` | `0` (`product(size_node)`) |
+| `id_node` | `0` |
+| `eo` | `0` |
+| `expansion_left`, `expansion_right` | `[0, 0, 0, 0]` |
+| `is_only_local` | `False` (the geometry is not initialized) |
+| `total_volume`, `spatial_volume` | `0` |
+| `local_volume`, `local_volume_expanded` | `0` |
+| `str` / `repr` / `show()` | `Geometry([0, 0, 0, 0])` |
+
+The important part is that **nothing crashes**: every size and volume
+accessor returns `0` for a zero extent instead of dividing by it.  The
+coordinate maps behave the same way:
+
+- `coordinate_from_index(index)` and `g_coordinate_from_index(index)` return
+  the zero coordinate `Coordinate()` (an empty geometry owns no site, so no
+  index is valid).
+- `index_from_coordinate(xl)` and `index_from_g_coordinate(xg)` return `0`.
+- `xg_arr()` returns an empty array of shape `(0, 4)`.
+- `coordinate_g_from_l` / `coordinate_l_from_g` are plain translations and are
+  unaffected.
+
+A geometry with a single zero extent (for example
+`Geometry(0, Coordinate([1,1,1,1]), Coordinate([4,4,4,0]))`) is empty in the
+same way: `total_volume`, `spatial_volume` and the local volumes are `0`
+(while `num_node` and `is_only_local` keep their usual values, `1` and
+`True`), and the same accessors stay safe.
+
+Before this contract was introduced, `Geometry().spatial_volume` performed
+`total_volume / (node_site[3] * size_node[3])` and killed the interpreter with
+`SIGFPE` (integer divide by zero); `coordinate_from_index` and
+`g_coordinate_from_index` did the same via the zero `node_site` extents.  See
+qlat-issue-9 in `tmp/qlat-ref-reorg/qlat-issues.md`.
+
+`Geometry()` remains usable before `q.begin_with_mpi()`; only
+`Geometry(total_site)` (which needs the global `size_node`) requires the
+initialization.
+
+```python
+import qlat as q
+
+geo = q.Geometry()
+print(geo.total_site.to_list())   # [0, 0, 0, 0]
+print(geo.num_node)               # 0
+print(geo.spatial_volume)         # 0  (used to be SIGFPE)
+print(geo.coordinate_from_index(0).to_list())   # [0, 0, 0, 0]
+print(repr(geo))                  # Geometry([0, 0, 0, 0])
+```
 
 ---
 

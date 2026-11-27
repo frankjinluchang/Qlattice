@@ -167,7 +167,7 @@ void set_rand_u1_src_psel(Propagator4d& prop, FieldM<ComplexD, 1>& fu1,
     if (geo.is_local(xl)) {
       const Long gindex = index_from_coordinate(xg, total_site);
       RngState rst = rs.newtype(gindex);
-      const double phase = u_rand_gen(rst, PI, -PI);
+      const double phase = u_rand_gen(rst, -PI, PI);
       const ComplexD u1 = qpolar(1.0, phase);
       set_unit(prop.get_elem(xl), u1);
       fu1.get_elem(xl) = u1;
@@ -209,7 +209,7 @@ void set_rand_u1_src_fsel(Propagator4d& prop, FieldM<ComplexD, 1>& fu1,
     qassert(geo.is_local(xl));
     const Long gindex = index_from_coordinate(xg, total_site);
     RngState rst = rs.newtype(gindex);
-    const double phase = u_rand_gen(rst, PI, -PI);
+    const double phase = u_rand_gen(rst, -PI, PI);
     const ComplexD u1 = qpolar(1.0, phase);
     set_unit(prop.get_elem(xl), u1);
     fu1.get_elem(xl) = u1;
@@ -250,7 +250,7 @@ void set_rand_vol_u1(Field<ComplexD>& fu1, const Geometry& geo_input,
     RngState rst = rs.newtype(gindex);
     Vector<ComplexD> fv = fu1.get_elems(xl);
     for (Int m = 0; m < multiplicity; ++m) {
-      const RealD phase = u_rand_gen(rst, PI, -PI);
+      const RealD phase = u_rand_gen(rst, -PI, PI);
       const ComplexD u1 = qpolar(1.0, phase);
       fv[m] = u1;
     }

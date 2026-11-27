@@ -209,7 +209,7 @@ cdef extern from "qlat/field.h" namespace "qlat":
 
     RealD qnorm[M](const Field[M]& f) except +
     void qnorm_field[M](Field[RealD]& f, const Field[M]& f1) except +
-    void set_u_rand[M](Field[M]& sp, const RngState& rs, const RealD upper, const RealD lower) except +
+    void set_u_rand[M](Field[M]& sp, const RngState& rs, const RealD lower, const RealD upper) except +
     void set_g_rand[M](Field[M]& sp, const RngState& rs, const RealD center, const RealD sigma) except +
     void set_xg_field(Field[Int]& f, const Geometry& geo) except +
     void field_shift[M](Field[M]& f, const Field[M]& f1, const Coordinate& shift) except +
@@ -336,7 +336,7 @@ cdef extern from "qlat/selected-points.h" namespace "qlat":
     #
     RealD qnorm[M](const SelectedPoints[M]& sp) except +
     void qnorm_field[M](SelectedPoints[RealD]& sp, const SelectedPoints[M]& sp1) except +
-    void set_u_rand[M](SelectedPoints[M]& sp, const PointsSelection& psel, const RngState& rs, const RealD upper, const RealD lower) except +
+    void set_u_rand[M](SelectedPoints[M]& sp, const PointsSelection& psel, const RngState& rs, const RealD lower, const RealD upper) except +
     void set_g_rand[M](SelectedPoints[M]& sp, const PointsSelection& psel, const RngState& rs, const RealD center, const RealD sigma) except +
     void lat_data_from_selected_points[M](LatData& ld, const SelectedPoints[M]& sp) except +
     void selected_points_from_lat_data[M](SelectedPoints[M]& sp, const LatData& ld) except +
@@ -372,7 +372,7 @@ cdef extern from "qlat/selected-field-io.h" namespace "qlat":
     void qnorm_field[M](SelectedField[RealD]& f, const SelectedField[M]& f1) except +
     void convert_field_float_from_double[M, N](SelectedField[N]& ff, const SelectedField[M]& f) except +
     void convert_field_double_from_float[M, N](SelectedField[N]& ff, const SelectedField[M]& f) except +
-    void set_u_rand[M](SelectedField[M]& sp, const FieldSelection& fsel, const RngState& rs, const RealD upper, const RealD lower) except +
+    void set_u_rand[M](SelectedField[M]& sp, const FieldSelection& fsel, const RngState& rs, const RealD lower, const RealD upper) except +
     void set_g_rand[M](SelectedField[M]& sp, const FieldSelection& fsel, const RngState& rs, const RealD center, const RealD sigma) except +
     void set_selected_field[t](SelectedField[t]& sf, const Field[t]& f,
                                const FieldSelection& fsel) except +

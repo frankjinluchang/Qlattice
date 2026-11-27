@@ -132,23 +132,24 @@ RealD gf_gauge_divergence(const GaugeField& gf, const std::vector<Int>& dirs)
   return gf_gauge_divergence_from_gradient(D);
 }
 
-RealD gf_gauge_unitarity_error(const GaugeField& gf)
+RealD gf_gauge_unitarity_error(const Field<ColorMatrix>& f)
 {
   TIMER("gf_gauge_unitarity_error");
-  const Geometry& geo = gf.geo();
-  Field<RealD> f;
-  f.init(geo, 1);
+  const Geometry& geo = f.geo();
+  Field<RealD> f_err;
+  f_err.init(geo, 1);
   qacc_for(index, geo.local_volume(), {
-    const Geometry& geo = gf.geo();
+    const Geometry& geo = f.geo();
     const Coordinate xl = geo.coordinate_from_index(index);
-    const Vector<ColorMatrix> v = gf.get_elems_const(xl);
+    const Vector<ColorMatrix> v = f.get_elems_const(xl);
+    const Int multiplicity = f.multiplicity;
     RealD err = 0.0;
-    for (Int mu = 0; mu < 4; ++mu) {
-      const ColorMatrix m = v[mu] * matrix_adjoint(v[mu]);
+    for (Int m = 0; m < multiplicity; ++m) {
+      const ColorMatrix mm = v[m] * matrix_adjoint(v[m]);
       for (Int i = 0; i < 3; ++i) {
         for (Int j = 0; j < 3; ++j) {
           const ComplexD delta =
-              m(i, j) - (i == j ? ComplexD(1.0) : ComplexD(0.0));
+              mm(i, j) - (i == j ? ComplexD(1.0) : ComplexD(0.0));
           // std::abs(ComplexD) is a host-only std::complex overload that is not
           // device callable inside this qacc_for CUDA lambda;
           // std::sqrt(qnorm(delta)) is the device-safe equivalent (qnorm is the
@@ -157,9 +158,9 @@ RealD gf_gauge_unitarity_error(const GaugeField& gf)
         }
       }
     }
-    f.get_elem(xl) = err;
+    f_err.get_elem(xl) = err;
   });
-  return field_glb_max(f)[0];
+  return field_glb_max(f_err)[0];
 }
 
 GaugeFixingInfo gf_fix_gauge(GaugeTransform& gt, const GaugeField& gf,

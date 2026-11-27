@@ -264,7 +264,7 @@ inline void test_interpolationBilinear()
   std::vector<RealD> shift(5);
   for (Int k = 0; k < test_size; ++k) {
     for (size_t i = 0; i < shift.size(); ++i) {
-      shift[i] = u_rand_gen(rs, PI, 0.0);
+      shift[i] = u_rand_gen(rs, 0.0, PI);
     }
     for (size_t idx = 0; idx < interpolation.size(); ++idx) {
       std::vector<RealD> x = interpolation.get_coor(idx);
@@ -275,11 +275,11 @@ inline void test_interpolationBilinear()
     }
     for (size_t i = 0; i < test_size; ++i) {
       std::vector<RealD> x(5);
-      x[0] = u_rand_gen(rs, limit, -limit);
-      x[1] = u_rand_gen(rs, limit, -limit);
-      x[2] = u_rand_gen(rs, limit, -limit);
-      x[3] = u_rand_gen(rs, limit, -limit);
-      x[4] = u_rand_gen(rs, limit, -limit);
+      x[0] = u_rand_gen(rs, -limit, limit);
+      x[1] = u_rand_gen(rs, -limit, limit);
+      x[2] = u_rand_gen(rs, -limit, limit);
+      x[3] = u_rand_gen(rs, -limit, limit);
+      x[4] = u_rand_gen(rs, -limit, limit);
       const RealD fi = interpolation(x);
       const RealD f = std::sin(x[0] + shift[0]) * std::sin(x[1] + shift[1]) *
                       std::sin(x[2] + shift[2]) * std::sin(x[3] + shift[3]) *

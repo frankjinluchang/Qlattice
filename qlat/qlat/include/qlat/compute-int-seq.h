@@ -382,9 +382,9 @@ inline void profile_computeIntSeq_integrand()
   for (Int i = 0; i < size; ++i) {
     CoordinateD x, y, eta;
     for (Int m = 0; m < 4; ++m) {
-      x[m] = u_rand_gen(rs, high, low);
-      y[m] = u_rand_gen(rs, high, low);
-      eta[m] = u_rand_gen(rs, high, low);
+      x[m] = u_rand_gen(rs, low, high);
+      y[m] = u_rand_gen(rs, low, high);
+      eta[m] = u_rand_gen(rs, low, high);
     }
     MuonLineIntegrand mli;
     mli.init(x, y);

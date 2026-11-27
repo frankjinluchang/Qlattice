@@ -88,7 +88,10 @@ bool metropolis_accept(RealD& accept_prob, const RealD delta_h, const Int traj,
       accept_prob = 1.0;
     } else {
       RngState rs = rs_;
-      const RealD rand_num = u_rand_gen(rs, 0.0, 1.0);
+      // This used to be `u_rand_gen(rs, 0.0, 1.0)` in the old (upper, lower)
+      // argument order, i.e. a draw in (0, 1]; keep that value bit for bit so
+      // the accept/reject decisions of existing runs are unchanged.
+      const RealD rand_num = 1.0 - u_rand_gen(rs);
       accept_prob = std::exp(-delta_h);
       if (rand_num <= accept_prob) {
         flag_d = 1.0;

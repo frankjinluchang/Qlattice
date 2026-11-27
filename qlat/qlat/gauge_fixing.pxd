@@ -21,7 +21,7 @@ cdef extern from "qlat/gauge-fixing.h" namespace "qlat":
 
     RealD gf_gauge_divergence(const cc.GaugeField& gf, const std_vector[Int]& dirs) except +
 
-    RealD gf_gauge_unitarity_error(const cc.GaugeField& gf) except +
+    RealD gf_gauge_unitarity_error(const cc.Field[cc.ColorMatrix]& f) except +
 
     GaugeFixingInfo gf_fix_gauge(cc.GaugeTransform& gt, const cc.GaugeField& gf, const std_vector[Int]& dirs, const Int max_iter, const RealD eps, const RealD alpha, const Bool verbose) except +
 

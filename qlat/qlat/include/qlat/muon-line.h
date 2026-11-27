@@ -114,9 +114,9 @@ inline SpatialO3Matrix makeRandomSpatialO3Matrix(RngState& rs)
   const RealD reflex_z = u_rand_gen(rs) >= 0.5 ? 1.0 : -1.0;
   SpatialO3Matrix reflex;
   reflex << reflex_x, 0, 0, 0, reflex_y, 0, 0, 0, reflex_z;
-  const RealD phi1 = u_rand_gen(rs, PI, -PI);
-  const RealD phi2 = u_rand_gen(rs, PI, -PI);
-  const RealD phi3 = u_rand_gen(rs, PI, -PI);
+  const RealD phi1 = u_rand_gen(rs, -PI, PI);
+  const RealD phi2 = u_rand_gen(rs, -PI, PI);
+  const RealD phi3 = u_rand_gen(rs, -PI, PI);
   return reflex * makeRotationAroundX(phi3) * makeRotationAroundZ(phi2) *
          makeRotationAroundX(phi1);
 }
@@ -1497,8 +1497,8 @@ inline void test_muonline_transformation()
     RngState rsi(rs, a);
     CoordinateD x, y;
     for (Int m = 0; m < 4; ++m) {
-      x[m] = u_rand_gen(rsi, high, low);
-      y[m] = u_rand_gen(rsi, high, low);
+      x[m] = u_rand_gen(rsi, low, high);
+      y[m] = u_rand_gen(rsi, low, high);
     }
     for (Int m = 0; m < 4; ++m) {
       if (1 == bx) {
@@ -1541,10 +1541,10 @@ inline void test_muonline_transform_scaling()
     RngState rsi(rs, i);
     CoordinateD x, y;
     for (Int m = 0; m < 4; ++m) {
-      x[m] = u_rand_gen(rsi, high, low);
-      x[m] *= pow(u_rand_gen(rsi, 1.0, 0.0), 10);
-      y[m] = u_rand_gen(rsi, high, low);
-      y[m] *= pow(u_rand_gen(rsi, 1.0, 0.0), 10);
+      x[m] = u_rand_gen(rsi, low, high);
+      x[m] *= pow(u_rand_gen(rsi, 0.0, 1.0), 10);
+      y[m] = u_rand_gen(rsi, low, high);
+      y[m] *= pow(u_rand_gen(rsi, 0.0, 1.0), 10);
     }
     ManyMagneticMoments mmm = muonLineSym(x, y, IntegrationEps());
     ManyMagneticMoments mmmp =
@@ -1632,10 +1632,10 @@ inline void test_muonline_rotate()
     RngState rsi(rs, i);
     CoordinateD x, y;
     for (Int m = 0; m < 4; ++m) {
-      x[m] = u_rand_gen(rsi, high, low);
-      x[m] *= pow(u_rand_gen(rsi, 1.0, 0.0), 5);
-      y[m] = u_rand_gen(rsi, high, low);
-      y[m] *= pow(u_rand_gen(rsi, 1.0, 0.0), 5);
+      x[m] = u_rand_gen(rsi, low, high);
+      x[m] *= pow(u_rand_gen(rsi, 0.0, 1.0), 5);
+      y[m] = u_rand_gen(rsi, low, high);
+      y[m] *= pow(u_rand_gen(rsi, 0.0, 1.0), 5);
     }
     muonLineSymRotateCheck(makeRandomSpatialO3Matrix(rsi), x, y,
                            IntegrationEps());
@@ -1665,8 +1665,8 @@ inline void test_muonline_int()
     RngState rsi(rs, i);
     CoordinateD x, y;
     for (Int m = 0; m < 4; ++m) {
-      x[m] = 0.1 * (int)u_rand_gen(rsi, high, low);
-      y[m] = 0.1 * (int)u_rand_gen(rsi, high, low);
+      x[m] = 0.1 * (int)u_rand_gen(rsi, low, high);
+      y[m] = 0.1 * (int)u_rand_gen(rsi, low, high);
     }
     muonLineSymParamsCheck(x, y, IntegrationEps());
     // muonLineSymParamsCheck(x, y, 1e-10, 1e-4);

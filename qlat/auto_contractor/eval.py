@@ -416,7 +416,7 @@ def benchmark_eval_cexpr(
         res = np.array(
             [
                 [
-                    complex(rs.u_rand_gen(1.0, -1.0), rs.u_rand_gen(1.0, -1.0))
+                    complex(rs.u_rand_gen(-1.0, 1.0), rs.u_rand_gen(-1.0, 1.0))
                     for i in range(n_expr)
                 ]
                 for k in range(benchmark_size)

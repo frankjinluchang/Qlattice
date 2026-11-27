@@ -56,7 +56,12 @@ struct API GeometryNode {
   }
   qacc void init(const Int id_node_, const Coordinate& size_node_)
   {
-    const Coordinate coor_node_ = coordinate_from_index(id_node_, size_node_);
+    // An empty node grid (a zero extent in size_node) has no coordinate to
+    // derive; use the origin instead of dividing by a zero extent
+    // (qlat-issue-9).  num_node is then volume(size_node) == 0.
+    const Coordinate coor_node_ =
+        volume(size_node_) == 0 ? Coordinate()
+                                : coordinate_from_index(id_node_, size_node_);
     init(coor_node_, size_node_);
   }
 };
@@ -181,7 +186,9 @@ struct API Geometry {
   {
     Coordinate ret = xl;
     for (Int mu = 0; mu < DIMN; ++mu) {
-      if (geon.size_node[mu] == 1) {
+      // `node_site[mu] != 0` keeps an empty geometry (zero extents) from
+      // calling mod() with a zero length, which asserts and throws.
+      if (geon.size_node[mu] == 1 and node_site[mu] != 0) {
         ret[mu] = mod(xl[mu], node_site[mu]);
       }
     }
@@ -210,6 +217,11 @@ struct API Geometry {
   // 0 <= offset < local_volume_expanded() * multiplicity
   {
     Coordinate xl;
+    // An empty geometry owns no site; return the zero coordinate rather than
+    // dividing by a zero extent.
+    if (qlat::volume(node_site_expanded) == 0) {
+      return xl;
+    }
     if (eo == 0) {
       xl = qlat::coordinate_from_index(offset / multiplicity,
                                        node_site_expanded);
@@ -247,6 +259,11 @@ struct API Geometry {
   // get local coordinate from index
   // 0 <= index < local_volume()
   {
+    // An empty geometry owns no site; return the zero coordinate rather than
+    // dividing by a zero extent (qlat-issue-9).
+    if (local_volume() == 0) {
+      return Coordinate();
+    }
     if (eo == 0) {
       return qlat::coordinate_from_index(index, node_site);
     } else {
@@ -268,6 +285,11 @@ struct API Geometry {
   qacc Long g_index_from_g_coordinate(const Coordinate& xg) const
   {
     const Coordinate ts = total_site();
+    // An empty geometry has a zero total extent; mod() would assert on the
+    // zero length, so return 0 (qlat-issue-9).
+    if (qlat::volume(ts) == 0) {
+      return 0;
+    }
     return qlat::index_from_coordinate(mod(xg, ts), ts);
   }
   //
@@ -327,7 +349,13 @@ struct API Geometry {
   //
   qacc Long spatial_volume() const
   {
-    return total_volume() / (node_site[3] * geon.size_node[3]);
+    // An empty geometry (zero extent) has zero volume; guard the division so
+    // that it returns 0 instead of raising SIGFPE (qlat-issue-9).
+    const Long time_size = node_site[3] * geon.size_node[3];
+    if (time_size == 0) {
+      return 0;
+    }
+    return total_volume() / time_size;
   }
   //
   qacc Coordinate coordinate_g_from_l(const Coordinate& xl) const
@@ -1583,10 +1611,10 @@ using PselProp = SelectedPoints<WilsonMatrix>;
 
 template <class M,
           QLAT_ENABLE_IF(is_data_value_type<M>() and is_composed_of_real<M>())>
-void set_u_rand(Field<M>& f, const RngState& rs, const RealD upper = 1.0,
-                const RealD lower = -1.0)
+void set_u_rand(Field<M>& f, const RngState& rs, const RealD lower = -1.0,
+                const RealD upper = 1.0)
 {
-  TIMER("set_u_rand(f,rs,upper,lower)");
+  TIMER("set_u_rand(f,rs,lower,upper)");
   using Real = typename IsDataValueType<M>::ElementaryType;
   qthread_for(index, f.geo().local_volume(), {
     const Geometry& geo = f.geo();
@@ -1597,17 +1625,17 @@ void set_u_rand(Field<M>& f, const RngState& rs, const RealD upper = 1.0,
     Vector<M> v = f.get_elems(xl);
     Vector<Real> dv((Real*)v.data(), v.data_size() / sizeof(Real));
     for (Int m = 0; m < dv.size(); ++m) {
-      dv[m] = u_rand_gen(rsi, upper, lower);
+      dv[m] = u_rand_gen(rsi, lower, upper);
     }
   });
 }
 
 template <class M, QLAT_ENABLE_IF(is_data_value_type<M>() and
                                   (not is_composed_of_real<M>()))>
-void set_u_rand(Field<M>& f, const RngState& rs, const RealD upper = 1.0,
-                const RealD lower = -1.0)
+void set_u_rand(Field<M>& f, const RngState& rs, const RealD lower = -1.0,
+                const RealD upper = 1.0)
 {
-  TIMER("set_u_rand(f,rs,upper,lower)(zero)");
+  TIMER("set_u_rand(f,rs,lower,upper)(zero)");
   (void)rs;
   (void)upper;
   (void)lower;
@@ -1731,8 +1759,8 @@ void set_g_rand(Field<M>& f, const RngState& rs, const RealD center = 0.0,
                                             SelectedField<TYPENAME> & f2);    \
                                                                               \
   QLAT_EXTERN template void set_u_rand<TYPENAME>(                             \
-      Field<TYPENAME> & f, const RngState& rs, const RealD upper,             \
-      const RealD lower);                                                     \
+      Field<TYPENAME> & f, const RngState& rs, const RealD lower,             \
+      const RealD upper);                                                     \
                                                                               \
   QLAT_EXTERN template void set_g_rand<TYPENAME>(                             \
       Field<TYPENAME> & f, const RngState& rs, const RealD center,            \

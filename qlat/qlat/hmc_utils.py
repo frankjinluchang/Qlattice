@@ -68,7 +68,7 @@ def metropolis_accept(delta_h, traj, rs):
             flag_d = 1.0
         else:
             accept_prob = math.exp(-delta_h)
-            rand_num = rs.u_rand_gen(1.0, 0.0)
+            rand_num = rs.u_rand_gen(0.0, 1.0)
             if rand_num <= accept_prob:
                 flag_d = 1.0
     flag_d = q.glb_sum_double(flag_d)

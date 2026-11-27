@@ -101,7 +101,11 @@ gauge-fixed field is the new field `gt * gf`.  The getters are read-only:
   `(gt, info)`.
 - `q.get_gauge_functional(gf, dirs)` — normalized gauge functional.
 - `q.get_gauge_divergence(gf, dirs)` — RMS divergence `theta`.
-- `q.get_unitarity_error(gf)` — maximal `|U U^dagger - 1|` matrix element.
+- `q.get_unitarity_error(gf)` — maximal `|U U^dagger - 1|` matrix element.  It
+  accepts a `qlat.GaugeField` (over every site and all four link directions)
+  and a `qlat.GaugeTransform` (over every site), since the number only depends
+  on the field's matrices; any other type (`qlat.GaugeMomentum`, a raw array,
+  a plain list) raises `TypeError`.
 
 The returned `gt` acts on the left exactly as in [Eq. (5)](#algorithm), so
 `gt * gf` allocates a new `GaugeField` and the caller keeps the original.  In
@@ -155,9 +159,27 @@ implementations return a transform, so the comparison applies both transforms
 to the same original field and compares the resulting fixed fields (see the
 non-uniqueness note above).  Run it manually with `mpiexec`.
 
+**Coulomb gauge is compared with `q.fix_gauge`, not `q.fix_coulomb_gauge`.**
+Component 3 is time in this implementation's own convention (`total_site` is
+`(Lx, Ly, Lz, Lt)`, `Geometry::spatial_volume` divides out component 3,
+`get_psel_tslice` slices `t_dir=3`), so the spatial directions are `(0, 1, 2)`.
+`fix_coulomb_gauge` here uses `{1, 2, 3}` instead — it fixes the three
+directions that include time and excludes spatial direction 0.  That is
+**qlat-issue-8** (`tmp/qlat-ref-reorg/qlat-issues.md`); the user decided
+`qlat-ref` implements the correct set rather than reproducing the bug.  The
+cross-check therefore drives the qlat side with
+`q.fix_gauge(gf, dirs=[0, 1, 2])`, which runs the same local
+steepest-descent algorithm on the correct directions — `fix_coulomb_gauge` is
+exactly `fix_gauge(dirs=[1, 2, 3])` to round-off, so nothing but the direction
+set differs.  The script additionally asserts the observed qlat behaviour
+(`fix_coulomb_gauge` converges `(1, 2, 3)` and not `(0, 1, 2)`), so an
+upstream fix of qlat will surface here as a failure.
+
 `qlat-ref` is an installed package in the nix development environment (it is
 part of `qlat-jhub-env` and has its own `qlat_ref` nix attribute), so the
-script just imports it:
+script just imports it — but it prefers a build that has the topic modules
+(`qlat_ref.gauge_fixing`) and otherwise falls back to the sibling source tree,
+so a stale installed copy cannot make the cross-check measure old code:
 
 ```bash
 source result-py-local/bin/setenv-qlat.sh
@@ -166,9 +188,9 @@ mpiexec -n 2 --oversubscribe --bind-to none \
 ```
 
 It is still not in CI because the nix *example* derivation does not depend on
-`qlat-ref`.  A `sys.path` fallback adds the sibling `qlat-ref/` source tree
-when the environment has not been rebuilt since `qlat-ref` was packaged, so a
-plain checkout also works.  The reference package's own tests are run with
+`qlat-ref`.  A fallback adds the sibling `qlat-ref/` source tree when the
+environment has not been rebuilt since `qlat-ref` was packaged (or still has
+the pre-reorganisation single-module layout), so a plain checkout also works.  The reference package's own tests are run with
 `cd qlat-ref && python3 -m unittest discover -s tests -t . -v` (see
 `docs/qlat-ref.rst`).
 
