@@ -1,0 +1,1455 @@
+{
+ "metadata": {
+  "description": "C++ qlat RngState test vectors for qlat_ref.rng (SHA-256 counter mode)",
+  "provenance": {
+   "qlat_version": "1.21",
+   "qlat_utils_version": "1.21",
+   "generator": "qlat-ref/tests/data/make-rng-vectors.py (run under result-py-local/bin/setenv-qlat.sh)",
+   "python": "3.13.18",
+   "numpy": "2.4.4",
+   "platform": "Linux-6.18.65-x86_64-with-glibc2.42",
+   "machine": "x86_64",
+   "libc": [
+    "glibc",
+    "2.42"
+   ],
+   "git_commit": "7d56bc7152d043b61b42f7a8e49712cfb2ed5a6e",
+   "note": "Every value was cross-checked against qlat_ref.rng before being written, so a mismatch between the two implementations aborts this script instead of committing a wrong expectation."
+  },
+  "exactness": {
+   "integer": "bit-exact uint64; the tests compare Python ints with ==",
+   "float": "values_hex is the bit pattern produced by the x86-64 glibc build; the tests compare hex exactly on x86-64 Linux and fall back to 1e-13 relative tolerance elsewhere"
+  },
+  "split_semantics": "split(key) formats '[index] {key}' (or '[type,index] {key}') padded with ASCII spaces to a multiple of 64 bytes, feeds it to the raw SHA-256 compression function without final padding, and advances numBytes by the padded byte count",
+  "python_api_notes": {
+   "split_accepts_int_in_qlat_python": false,
+   "split_int_note": "split() accepts only str/bytes in BOTH packages (it routes through as_bytes), so an int raises TypeError; C++ has split(Long) == split(show(Long)), and the int spelling lives on the constructor: RngState(rs, 7) == rs.split('7').  qlat_ref.rng no longer accepts an int in split() (it used to, as a documented extension, and that was removed for parity).",
+   "ctor_bytes_note": "FIXED: RngState.__init__ uses as_seed_bytes, so a bytes seed is used VERBATIM (b'abc' == 'abc') instead of going through repr(); labels also carry embedded NULs verbatim",
+   "no_newtype_in_python": true,
+   "state_export_in_python": "RngState.get_state()/set_state() + __reduce__ expose the 104-byte state (magic b'QLATRNG' + version 1 + 24 LE uint32 in exportRngState order)"
+  },
+  "maintenance_note": "These vectors are a committed reference, not a snapshot to regenerate casually: the tests compare them exactly, so a mismatch means the implementation changed.  Regenerate only if the C++ algorithm changes.",
+  "algorithm": "SHA-256 counter mode over a fixed chaining value: rand_gen hashes '[index]' continuing the SHA-256 prefix with a byte counter, returns the last two 32-bit words as one big-endian uint64, and caches the first three words LIFO"
+ },
+ "integer_cases": {
+  "root_test_rng": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "test-rng"
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      3643577472097925569,
+      4981363023072155835,
+      13375873323462938781,
+      15953256473091290464,
+      1881386707297441666,
+      16142989867502700772,
+      3618141308112581850,
+      11946024020521535119,
+      16341262554708146464,
+      11165051126116169181,
+      7694432928787892328,
+      9232383689740355871,
+      6047729733222799555,
+      6768714060951140971,
+      3244584296203332583,
+      14268613177755856504,
+      9736522827711553033,
+      14014613605453692438,
+      2492918410952937815,
+      15974465423595288033
+     ]
+    }
+   ]
+  },
+  "root_test_rng_split_0": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "test-rng"
+    },
+    "splits": [
+     "0"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      658913033478830290,
+      10279997539578989902,
+      15458902031819314521,
+      15697616347893187775,
+      324206390331881839,
+      11498486154175356490,
+      15856567230379072902,
+      14701205903510109992,
+      5758259518172725565,
+      4262086529763550726,
+      3300332534010332337,
+      17735096142043552361,
+      2433847960166260276,
+      11932715465017849000,
+      12450113241725857445,
+      13660566271606261116,
+      14771225915933143035,
+      15905889772982399838,
+      13521349280196195831,
+      6384752744323494323
+     ]
+    }
+   ]
+  },
+  "root_test_rng_split_a": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "test-rng"
+    },
+    "splits": [
+     "a"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      5492269681976053969,
+      8841064759551870407,
+      10790849832579404499,
+      1064367298578895695,
+      5305600672744452604,
+      13528260350440679840,
+      4663758691220239100,
+      194218396820596854,
+      18312478696197927603,
+      3659534070861771362,
+      17062651693801365930,
+      861084153471979303,
+      17976057069946141936,
+      13925548609761140033,
+      9970450672991092283,
+      13678282925697963851,
+      1230213894015082885,
+      9712380251224787647,
+      10845783297455163391,
+      3522971637537268919
+     ]
+    }
+   ]
+  },
+  "chain_a_b": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "test-rng"
+    },
+    "splits": [
+     "a",
+     "b"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      939092882526425336,
+      14683400712619665840,
+      1596777816313207448,
+      10321869993897913860,
+      11430440631010044037,
+      12698266752242986277,
+      15325799043658592213,
+      17028590307179927338,
+      10837303053207777328,
+      13733354971225383452,
+      9472319731121145496,
+      17764523847962162440,
+      8438513546589542315,
+      4227438332603401284,
+      5762389589728722151,
+      7050702165147261239,
+      9688119613436250444,
+      15826399862383665483,
+      7975023098771662734,
+      861368048907257527
+     ]
+    }
+   ]
+  },
+  "root_empty_seed": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": ""
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      923989791884098426,
+      4059518381803090862,
+      9579314564912703741,
+      10843511538292450449,
+      18136225418287937912,
+      10312440782187023927,
+      9332062040923572559,
+      14607118268120332301,
+      16421448192171965195,
+      17028791891707490818,
+      15133107109757817500,
+      16120360105275434609,
+      16621553981449237840,
+      8747692435805869328,
+      9205987749987240200,
+      4161349317060961448,
+      9841372246400285160,
+      8466808701146558686,
+      16288163709857299506,
+      2367915146808670331
+     ]
+    }
+   ]
+  },
+  "root_int_42": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": 42
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      17631819877625494106,
+      6163711586183634907,
+      17764451073853074047,
+      11122295919780039581,
+      6865982481828918680,
+      15840091920121485232,
+      1307783505865235895,
+      12208021397703681642,
+      15602779376192621058,
+      11373703783086148798,
+      18371104034763067816,
+      7886941010786206169,
+      2985639204859875519,
+      11615755218325662397,
+      9100236458126716738,
+      2943902063146506600,
+      6360691483311932568,
+      7992383931215853043,
+      17512222390234587224,
+      2001739400763708913
+     ]
+    }
+   ],
+   "note": "an int seed is str()ed, so this is RngState('42')"
+  },
+  "root_int_0": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": 0
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      16044863060010516612,
+      3381371190588790696,
+      17453507635195711850,
+      14601944122778299198,
+      14230014842990058889,
+      11577666925339247135,
+      9940612379374305135,
+      1807730614465454570,
+      4782622385372929245,
+      6830938083152057818,
+      2682654033406098977,
+      16578169435796160133,
+      4580243806962457782,
+      5900014067864196883,
+      3144215799181517346,
+      14028680206560142358,
+      9305887511140560554,
+      11873265539845633400,
+      18336438153645651099,
+      13048996741234973432
+     ]
+    }
+   ]
+  },
+  "root_fresh_state": {
+   "seed_spec": {
+    "kind": "fresh"
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      13673302678699867938,
+      11609223668292662768,
+      172978794249917681,
+      579450136117485302,
+      6653600625386828774,
+      15302009530838652627,
+      8770033489588053674,
+      1937490325283587064,
+      9820609276747376822,
+      9502238779259613301,
+      4596086870948622370,
+      1601320435447458327,
+      4244155534644114672,
+      17704976234940528959,
+      695234262894796439,
+      5935396543990004751,
+      17934418002819710746,
+      14205689176525623160,
+      17622027580034378266,
+      18319371414143468416
+     ]
+    }
+   ],
+   "note": "RngState() is a bare SHA-256 context: no seed split was applied"
+  },
+  "root_long_key_200": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      17638928004370396157,
+      17777022184765608335,
+      7178101171025112990,
+      1472033652010309540,
+      16230554504474782082,
+      13865192671742234747,
+      2968199516966551553,
+      9399908135206391718,
+      5704428464542456331,
+      16257193161239622497,
+      14981167774239944221,
+      3361627642478463034,
+      3188173886054176452,
+      2367870212765862974,
+      5546978118611592370,
+      2249038182746850262,
+      14138876214044844249,
+      8770618949786606083,
+      10429563556484802860,
+      5201440014970231089
+     ]
+    }
+   ],
+   "note": "a 200-byte seed spans several 64-byte blocks"
+  },
+  "lattice_v1_split_site_0_0_0_0": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "lattice-v1"
+    },
+    "splits": [
+     "(0,0,0,0)"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      6600506614203843781,
+      10248598890517597173,
+      11310330199251850982,
+      10290518338016401188,
+      10402963696897209861,
+      13787283487599705493,
+      12475339798702469183,
+      11808869127803026853,
+      11020105478182287434,
+      3885082660139736700,
+      12745814384099020922,
+      5998496752328647185,
+      12059692706384344047,
+      12935431659601309173,
+      2290963255495054327,
+      2691548138313633107,
+      4128717551644255904,
+      801559839692397466,
+      17096156088276429795,
+      491019115031194118
+     ]
+    }
+   ],
+   "note": "the per-site label form used by qlat's lattice scripts"
+  },
+  "raw_words_test_rng": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "test-rng"
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      3643577472097925569,
+      4981363023072155835,
+      13375873323462938781,
+      15953256473091290464,
+      1881386707297441666,
+      16142989867502700772,
+      3618141308112581850,
+      11946024020521535119,
+      16341262554708146464,
+      11165051126116169181,
+      7694432928787892328,
+      9232383689740355871
+     ]
+    }
+   ],
+   "note": "12 draws consume 3 SHA-256 invocations: pins the 3-deep LIFO word cache"
+  }
+ },
+ "split_cases": {
+  "split_int_0": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "test-rng"
+    },
+    "splits": [
+     {
+      "split_int": 0
+     }
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      658913033478830290,
+      10279997539578989902,
+      15458902031819314521,
+      15697616347893187775,
+      324206390331881839,
+      11498486154175356490,
+      15856567230379072902,
+      14701205903510109992
+     ]
+    }
+   ],
+   "note": "C++ split(Long 0) == split(str(0))"
+  },
+  "split_int_neg1": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "test-rng"
+    },
+    "splits": [
+     {
+      "split_int": -1
+     }
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      6630548367699281490,
+      1313858084053944704,
+      10301644172143971524,
+      12191366638888948142,
+      10300209001230755329,
+      2299364874616642910,
+      14868731839424423523,
+      14109962919799924028
+     ]
+    }
+   ]
+  },
+  "split_int_2p62": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "test-rng"
+    },
+    "splits": [
+     {
+      "split_int": 4611686018427387904
+     }
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      11631497914847306488,
+      4811931378388613710,
+      17708891864746894515,
+      2751856815536531424,
+      17622759735162517279,
+      14978867158869357651,
+      14200652555571832532,
+      9090608943333191245
+     ]
+    }
+   ]
+  },
+  "chain_deep_6": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "deep"
+    },
+    "splits": [
+     "a",
+     "b",
+     "c",
+     "d",
+     "e",
+     "f"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      13679228604225151808,
+      2639652974591157460,
+      13374241693975775820,
+      6630946392247710235,
+      8710042451207101391,
+      15713180538596579154,
+      4090389720162135503,
+      12137382118493212021
+     ]
+    }
+   ],
+   "note": "6-deep chain: numBytes accumulates 6*64 on top of the seed's 64"
+  },
+  "label_utf8": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "utf8"
+    },
+    "splits": [
+     "h\u00e9llo-\u65e5\u672c"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      8571653202444343672,
+      16433044541627784101,
+      15505328149452923824,
+      15891726869187554835,
+      5216836795321493562,
+      8231603903121583047,
+      17449898193222292511,
+      12073941345827676217
+     ]
+    }
+   ],
+   "note": "UTF-8 label: the block count uses the byte length, not the character count"
+  },
+  "label_57_bytes": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "bytes"
+    },
+    "splits": [
+     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      9047193255940562310,
+      8051688614015953903,
+      15051014796756481708,
+      13471541596881689129,
+      9196255158499953050,
+      3663677620798548134,
+      11874709549086634040,
+      3993270138009800682
+     ]
+    }
+   ],
+   "note": "label of 57 bytes: the message is 63 bytes, so nBlocks = 1"
+  },
+  "label_58_bytes": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "bytes"
+    },
+    "splits": [
+     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      3785889669215765179,
+      11828262790476417401,
+      2962064432795789930,
+      5501201317940787532,
+      18124515373782153126,
+      3108994768530237811,
+      7170305854422027967,
+      15019913150438836830
+     ]
+    }
+   ],
+   "note": "label of 58 bytes: the message is 64 bytes, so nBlocks = 1"
+  },
+  "label_59_bytes": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "bytes"
+    },
+    "splits": [
+     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      1546524319585580830,
+      11380548091139555888,
+      3932313769465012600,
+      18179120503733742385,
+      4623009146243429098,
+      6032762630832955876,
+      2212256345356326114,
+      12257247881131664665
+     ]
+    }
+   ],
+   "note": "label of 59 bytes: the message is 65 bytes, so nBlocks = 2"
+  },
+  "label_62_bytes": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "bytes"
+    },
+    "splits": [
+     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      15940330144270053742,
+      9067866557141898202,
+      6020872926452765884,
+      3904024360736263662,
+      529720392250511944,
+      16940380798806609777,
+      9862539349147809952,
+      9741842883718818543
+     ]
+    }
+   ],
+   "note": "label of 62 bytes: the message is 68 bytes, so nBlocks = 2"
+  },
+  "label_63_bytes": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "bytes"
+    },
+    "splits": [
+     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      38136272002826276,
+      18081003222782917822,
+      584959894087542353,
+      13984117686816204234,
+      18227138045930558829,
+      3728727522106257794,
+      14099925982551076099,
+      2103213894256706563
+     ]
+    }
+   ],
+   "note": "label of 63 bytes: the message is 69 bytes, so nBlocks = 2"
+  },
+  "label_64_bytes": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "bytes"
+    },
+    "splits": [
+     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      7488748537287980688,
+      11219975791705563685,
+      5553423108263026534,
+      12396885181774216891,
+      12138553289480072892,
+      17757959473966094182,
+      1669463485808907112,
+      7826382939197784697
+     ]
+    }
+   ],
+   "note": "label of 64 bytes: the message is 70 bytes, so nBlocks = 2"
+  },
+  "label_65_bytes": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "bytes"
+    },
+    "splits": [
+     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      15764317781212843005,
+      7498390763824159138,
+      15814101626784426060,
+      13071245962403551906,
+      3932607054791452396,
+      12995738752302200153,
+      10156975525836598464,
+      15440442035253317011
+     ]
+    }
+   ],
+   "note": "label of 65 bytes: the message is 71 bytes, so nBlocks = 2"
+  },
+  "label_66_bytes": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "bytes"
+    },
+    "splits": [
+     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      2544693435318529985,
+      10747721493100153558,
+      3076100055452903096,
+      5110917558626337408,
+      17236380233096195640,
+      8040863024755874062,
+      11394494296598137045,
+      15085540172310106947
+     ]
+    }
+   ],
+   "note": "label of 66 bytes: the message is 72 bytes, so nBlocks = 2"
+  },
+  "ctor_parent_split_5": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "test-rng"
+    },
+    "splits": [
+     "5"
+    ]
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      7499627630621695575,
+      12371379412179593112,
+      17895548418951376642,
+      15968586178952804711,
+      5320089624545592300,
+      9304482546727799738,
+      14960716413975035378,
+      8494183835649710305
+     ]
+    }
+   ],
+   "note": "qlat's RngState(rs, 5) applies str(5), so it equals rs.split('5')"
+  },
+  "ctor_bytes_quirk": {
+   "seed_spec": {
+    "kind": "ctor_bytes",
+    "value": "abc"
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      10443139916481409681,
+      9154263345624496653,
+      13384370016539212474,
+      12856694552638192402,
+      12234553512442191978,
+      11172049916921615974,
+      5445028008051162085,
+      13636296274812122792
+     ]
+    }
+   ],
+   "note": "qlat's RngState.__init__ does str(x) for a non-RngState x, so a bytes seed is seeded through its repr string b'abc' and not as the raw bytes"
+  },
+  "label_nul_truncated": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "a\u0000bcdefg"
+   },
+   "calls": [
+    {
+     "func": "rand_gen",
+     "args": [],
+     "values": [
+      13455316285622698597,
+      7587647724048790738,
+      16271848381046050912,
+      10679305867477572973,
+      16988083917371676387,
+      5061413464790325083,
+      7618828599717775379,
+      9513084681219821821
+     ]
+    }
+   ],
+   "note": "qlat formats split labels with printf's %s, so a label containing a NUL byte is silently truncated: this seed behaves exactly like 'a' (qlat-issue-1).  Reproduced on purpose for bit-exact parity; see the qlat-issues write-up."
+  }
+ },
+ "float_cases": {
+  "floats_u_rand_gen": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "test-rng"
+   },
+   "calls": [
+    {
+     "func": "u_rand_gen",
+     "args": [],
+     "values_hex": [
+      "0x1.9484b3404019dp-3",
+      "0x1.14856d1bbded6p-2",
+      "0x1.73414bd6ab43ap-1",
+      "0x1.bacab47a029d7p-1",
+      "0x1.a1c073e059b18p-4",
+      "0x1.c00ed782b2751p-1",
+      "0x1.91b1c2ccc9bdap-3",
+      "0x1.4b919b1b9af09p-1",
+      "0x1.c58fa76d758afp-1",
+      "0x1.35e475b03e757p-1"
+     ],
+     "values": [
+      0.19751873054339067,
+      0.27004023057768956,
+      0.7251075458094711,
+      0.8648277663172007,
+      0.10199017776686181,
+      0.8751132342378957,
+      0.1961398333307603,
+      0.6475952597806734,
+      0.8858616181485298,
+      0.605258634342344
+     ]
+    }
+   ]
+  },
+  "floats_u_rand_range": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "test-rng"
+   },
+   "calls": [
+    {
+     "func": "u_rand_gen",
+     "args": [
+      -1.0,
+      2.5
+     ],
+     "values_hex": [
+      "-0x1.3c17c64f8fd2ep-2",
+      "-0x1.c16810f73a0a0p-5",
+      "0x1.89b244b7abb66p+0",
+      "0x1.03715deac249cp+1",
+      "-0x1.493bcd4dd8c26p-1",
+      "0x1.080cfc925c267p+1",
+      "-0x1.4108eb199ef42p-2",
+      "0x1.443ecf704f250p+0",
+      "0x1.0cddb27fc6d99p+1",
+      "0x1.1e4fcdf46d4d8p+0"
+     ],
+     "values": [
+      -0.3086844430981327,
+      -0.05485919297808661,
+      1.537876410333149,
+      2.0268971821102024,
+      -0.6430343778159837,
+      2.062896319832635,
+      -0.31351058334233894,
+      1.2665834092323571,
+      2.1005156635198543,
+      1.1184052201982038
+     ]
+    }
+   ],
+   "note": "pins the mapping u * 2**-64 * (upper - lower) + lower"
+  },
+  "floats_g_rand_gen": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "test-rng"
+   },
+   "calls": [
+    {
+     "func": "g_rand_gen",
+     "args": [],
+     "values_hex": [
+      "-0x1.fefec811c9d71p-1",
+      "0x1.131259ca1bcd0p-1",
+      "0x1.459af06d0f192p-2",
+      "-0x1.7ab6cfe7fa9e2p+0",
+      "0x1.ad4f71ca54ed2p+0",
+      "0x1.617fe7f65e5e4p-1",
+      "-0x1.3505f55436725p+0",
+      "-0x1.ad9257239f9d1p-2",
+      "0x1.f03eb41ff53bcp-3",
+      "0x1.9e4e48ec4e824p+0"
+     ],
+     "values": [
+      -0.9980375787462618,
+      0.5372493800367923,
+      0.31797385850566073,
+      -1.4793519917826576,
+      1.6769934767698271,
+      0.6904289711230231,
+      -1.2071221666905754,
+      -0.41950355677536516,
+      0.24230709764984038,
+      1.618382032100734
+     ]
+    }
+   ],
+   "note": "pins the polar Box-Muller path and the extra index bump on entry"
+  },
+  "floats_g_rand_nondefault": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "test-rng"
+   },
+   "calls": [
+    {
+     "func": "g_rand_gen",
+     "args": [],
+     "kwargs": {
+      "center": 1.5,
+      "sigma": 0.5
+     },
+     "values_hex": [
+      "0x1.00404dfb8d8a4p+0",
+      "0x1.c4c4967286f34p+0",
+      "0x1.a8b35e0da1e32p+0",
+      "0x1.854930180561ep-1",
+      "0x1.2b53dc72953b4p+1",
+      "0x1.d85ff9fd97979p+0",
+      "0x1.cafa0aabc98dbp-1",
+      "0x1.4a4db51b8c0c6p+0",
+      "0x1.9f03eb41ff53cp+0",
+      "0x1.2793923b13a09p+1"
+     ],
+     "values": [
+      1.0009812106268692,
+      1.7686246900183962,
+      1.6589869292528303,
+      0.7603240041086712,
+      2.3384967383849133,
+      1.8452144855615116,
+      0.8964389166547123,
+      1.2902482216123174,
+      1.6211535488249202,
+      2.309191016050367
+     ]
+    }
+   ],
+   "note": "pins that center/sigma are applied to the cached draw of a pair too"
+  },
+  "floats_g_rand_many": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "g-many"
+   },
+   "calls": [
+    {
+     "func": "g_rand_gen",
+     "args": [],
+     "values_hex": [
+      "-0x1.7aa71a671430ap-1",
+      "-0x1.2cafc725a88ebp-1",
+      "0x1.143d421a6b78ap-1",
+      "-0x1.120620479c87ep+0",
+      "-0x1.59f3ab0e5ad7cp-3",
+      "-0x1.378e28d92936ep-3",
+      "-0x1.9b47e31c72c4bp+0",
+      "-0x1.4805fbda89e53p-2",
+      "-0x1.9cda3d7fd9e30p-1",
+      "-0x1.569e44a050003p-5",
+      "-0x1.07ce6ee5bbfe6p-3",
+      "0x1.245a6defd8998p-1",
+      "-0x1.1afb084b01b33p+1",
+      "-0x1.0dc34378ab0bdp+0",
+      "-0x1.3eac93cf02e3dp-1",
+      "-0x1.ef5988909685fp-3",
+      "0x1.54b1894224551p-4",
+      "-0x1.856cf2fdbbe97p-2",
+      "-0x1.114525840894bp+1",
+      "0x1.059d3841f1380p+0",
+      "-0x1.546bbe1cc3c6ap+0",
+      "0x1.0719005510a78p-1",
+      "-0x1.2acc158b9e453p+1",
+      "-0x1.be0c5eb91868fp-2",
+      "-0x1.06073631d3cf0p+0",
+      "0x1.af1fed19b63d1p+0",
+      "0x1.2df3e432d2a18p-3",
+      "-0x1.a8afd7eec7ec8p-1",
+      "-0x1.4d3107a1898f4p-1",
+      "0x1.80b44ea240149p+0",
+      "0x1.b30669293c846p+0",
+      "0x1.0d7cfd90f894bp-6"
+     ],
+     "values": [
+      -0.7395561457470603,
+      -0.5872785790891418,
+      0.5395298630953544,
+      -1.0704059767563474,
+      -0.16892179143483677,
+      -0.1521266165993,
+      -1.6065656609014407,
+      -0.3203353263984116,
+      -0.8063525408333074,
+      -0.04182351497229322,
+      -0.12881170881837462,
+      0.5710024218827128,
+      -2.21078590071138,
+      -1.0537607354736303,
+      -0.6224104109000518,
+      -0.24186999026534559,
+      0.08317712418126645,
+      -0.38029842065496083,
+      -2.1349226851172367,
+      1.021930233096299,
+      -1.32976902200951,
+      0.5138626197661571,
+      -2.3343531543473914,
+      -0.43559406285030716,
+      -1.0235475417755957,
+      1.6840809047482603,
+      0.14743784217928702,
+      -0.8294665793400435,
+      -0.6507646927537096,
+      1.5027512689703875,
+      1.6993165708231728,
+      0.016448257087071465
+     ]
+    }
+   ],
+   "note": "32 draws: includes rejection retries and repeated cache pairs"
+  },
+  "metropolis_uniform": {
+   "seed_spec": {
+    "kind": "chain",
+    "root": {
+     "kind": "seed",
+     "value": "test-rng"
+    },
+    "splits": [
+     "metropolis_accept"
+    ]
+   },
+   "calls": [
+    {
+     "func": "u_rand_gen",
+     "args": [
+      1.0,
+      0.0
+     ],
+     "values_hex": [
+      "0x1.f89fa245575e0p-4",
+      "0x1.c447619d9d478p-4",
+      "0x1.ed32eae276bbap-2",
+      "0x1.bb2ce692fa406p-2",
+      "0x1.85d664e1d2d7ep-1"
+     ],
+     "values": [
+      0.12319911372238534,
+      0.11041963702321478,
+      0.4816395474169287,
+      0.4327884700019812,
+      0.7614013219512541
+     ]
+    }
+   ],
+   "note": "the uniform draw used by metropolis_accept"
+  }
+ },
+ "integer_derived_cases": {
+  "c_rand_gen": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "helpers"
+   },
+   "calls": [
+    {
+     "func": "c_rand_gen",
+     "args": [
+      [
+       4,
+       4,
+       4,
+       4
+      ]
+     ],
+     "values": [
+      [
+       0,
+       0,
+       3,
+       2
+      ],
+      [
+       0,
+       0,
+       0,
+       1
+      ],
+      [
+       3,
+       0,
+       2,
+       0
+      ],
+      [
+       1,
+       2,
+       1,
+       3
+      ],
+      [
+       3,
+       1,
+       2,
+       2
+      ],
+      [
+       1,
+       0,
+       0,
+       1
+      ],
+      [
+       2,
+       1,
+       1,
+       3
+      ],
+      [
+       1,
+       1,
+       3,
+       0
+      ],
+      [
+       2,
+       3,
+       1,
+       1
+      ],
+      [
+       1,
+       1,
+       3,
+       3
+      ]
+     ]
+    }
+   ],
+   "note": "c_rand_gen(size) = coordinate_from_index(rand_gen() % volume(size), size), component 0 fastest"
+  },
+  "select": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "helpers"
+   },
+   "calls": [
+    {
+     "func": "select",
+     "args": [
+      [
+       0,
+       10,
+       20,
+       30,
+       40,
+       50,
+       60
+      ]
+     ],
+     "values": [
+      20,
+      10,
+      40,
+      20,
+      10,
+      50,
+      60,
+      40
+     ]
+    }
+   ],
+   "note": "select(l) = l[rand_gen() % len(l)]"
+  },
+  "random_permute": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "perm2"
+   },
+   "calls": [
+    {
+     "func": "random_permute",
+     "args": [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ],
+     "values": [
+      1,
+      7,
+      0,
+      4,
+      5,
+      2,
+      6,
+      3
+     ]
+    }
+   ],
+   "note": "Fisher-Yates with k ascending and kk = rand_gen() % (size - k); leaves the input list and the passed RngState alone"
+  },
+  "rand_arr_fill_order": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "arr2"
+   },
+   "calls": [
+    {
+     "func": "rand_arr",
+     "args": [
+      [
+       2,
+       2
+      ]
+     ],
+     "values": [
+      8817577057377576284,
+      4750327452568750133,
+      1932123876776123049,
+      14932577886577744301
+     ]
+    }
+   ],
+   "note": "filled in C (row-major) order, as the ravel() view does"
+  },
+  "rand_arr_1d": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "arr2"
+   },
+   "calls": [
+    {
+     "func": "rand_arr",
+     "args": [
+      [
+       4
+      ]
+     ],
+     "values": [
+      8817577057377576284,
+      4750327452568750133,
+      1932123876776123049,
+      14932577886577744301
+     ]
+    }
+   ]
+  },
+  "u_rand_arr": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "uarr"
+   },
+   "calls": [
+    {
+     "func": "u_rand_arr",
+     "args": [
+      [
+       3
+      ]
+     ],
+     "values_hex": [
+      "0x1.9f6d10145a23ep-2",
+      "0x1.6f90575130c9dp-2",
+      "0x1.77fb7ce90ce48p-1"
+     ],
+     "values": [
+      0.40568947910518094,
+      0.3589490550331876,
+      0.7343405756459527
+     ]
+    }
+   ]
+  },
+  "g_rand_arr": {
+   "seed_spec": {
+    "kind": "seed",
+    "value": "garr"
+   },
+   "calls": [
+    {
+     "func": "g_rand_arr",
+     "args": [
+      [
+       3
+      ]
+     ],
+     "values_hex": [
+      "0x1.113d69503e9f6p+1",
+      "0x1.c843b8ae818f3p-1",
+      "0x1.db061042caffap-7"
+     ],
+     "values": [
+      2.1346866266078406,
+      0.8911416733760958,
+      0.014496572437188594
+     ]
+    }
+   ]
+  }
+ },
+ "newtype_cases": {
+  "typed_5": {
+   "note": "RngState('test-rng').newtype(5): the counter string becomes '[type,index]'",
+   "seed_spec": {
+    "kind": "seed",
+    "value": "test-rng"
+   },
+   "type": 5,
+   "values": [
+    9589291421813335777,
+    13468733132392537592,
+    6159637154388828356,
+    7358751720639981857,
+    12750448034895494677,
+    3775240013777018228,
+    2198129409254542216,
+    4088103763547679341
+   ]
+  },
+  "typed_0_split_k": {
+   "note": "RngState().newtype(0).split('k'): the split label becomes '[type,index] {k}' and the tag is cleared",
+   "seed_spec": {
+    "kind": "fresh"
+   },
+   "type": 0,
+   "split": "k",
+   "num_bytes_after_split": 64,
+   "values": [
+    1262591467389600163,
+    11082198802625541813,
+    16187497363240167838,
+    2974286282025800361,
+    16420880718094479551,
+    14152372295250133850,
+    11086294174409724754,
+    4246910071585938777
+   ]
+  }
+ }
+}
