@@ -16,6 +16,21 @@ size_node_list = [
 def get_rng_draws(rs, n=4):
     return [rs.rand_gen() for i in range(n)]
 
+def append_rng_draw_floats(name, draws):
+    """
+    Record floating-point draws as one float entry per value, with a relative
+    ``eps``.\n
+    The draws are obtained from the integer stream by a floating-point mapping,
+    so their last bit may legitimately differ between machines (FMA,
+    vectorisation, libm).  Recording a single string of exact ``float.hex()``
+    values instead would make ``check_log_json`` compare that text exactly and
+    fail on such a 1 ulp difference, which is not a change of the stream.  The
+    integer stream itself is pinned exactly by the ``rand_gen`` entries, so a
+    relative ``eps`` here keeps the values pinned without that fragility.
+    """
+    for idx, x in enumerate(draws):
+        q.json_results_append(f"{name} draw {idx}", x, 1.0e-12)
+
 def check_rng_labels():
     """
     RngState seed/split labels are byte strings (qlat-issue-1 and qlat-issue-6).\n
@@ -93,9 +108,9 @@ def check_u_rand_gen_bounds():
     rs = q.RngState("test-rng")
     q.json_results_append(f"u_rand_gen() draws = {get_rng_draws(rs, 4)}")
     rs = q.RngState("test-rng")
-    q.json_results_append(
-        f"u_rand_gen(lower=-1.0, upper=1.0) = "
-        f"{[rs.u_rand_gen(lower=-1.0, upper=1.0).hex() for _ in range(4)]}"
+    append_rng_draw_floats(
+        "u_rand_gen(lower=-1.0, upper=1.0)",
+        [rs.u_rand_gen(lower=-1.0, upper=1.0) for _ in range(4)],
     )
     # Positional args are (lower, upper): every draw lies in [lower, upper).
     rs = q.RngState("test-rng")
@@ -110,9 +125,8 @@ def check_u_rand_gen_bounds():
     ]
     # These are the numbers the old ``u_rand_gen(upper=2.0, lower=5.0)`` drew.
     rs = q.RngState("test-rng")
-    q.json_results_append(
-        f"u_rand_gen(2.0, 5.0) draws = "
-        f"{[rs.u_rand_gen(2.0, 5.0).hex() for _ in range(4)]}"
+    append_rng_draw_floats(
+        "u_rand_gen(2.0, 5.0)", [rs.u_rand_gen(2.0, 5.0) for _ in range(4)]
     )
     # u_rand_arr follows the same (lower, upper) order: the filler helpers are
     # internal (qlat-issue-3), so build the range from the array API.
@@ -122,16 +136,14 @@ def check_u_rand_gen_bounds():
     rs = q.RngState("test-rng")
     buf = rs.u_rand_arr((16,)) * 2.0 - 1.0
     assert np.all((-1.0 <= buf) & (buf < 1.0))
-    q.json_results_append(f"u_rand_arr(-1, 1) = {[float(x).hex() for x in buf[:4]]}")
+    append_rng_draw_floats("u_rand_arr(-1, 1)", [float(x) for x in buf[:4]])
     # Higher-level generators built on u_rand_gen are unchanged; these values
     # are pinned in the reference log.
     rs = q.RngState("test-rng")
-    q.json_results_append(
-        f"g_rand_gen draws = {[rs.g_rand_gen().hex() for _ in range(4)]}"
-    )
+    append_rng_draw_floats("g_rand_gen", [rs.g_rand_gen() for _ in range(4)])
     rs = q.RngState("test-rng")
-    q.json_results_append(
-        f"g_rand_arr draws = {[float(x).hex() for x in rs.g_rand_arr((2, 2)).ravel()]}"
+    append_rng_draw_floats(
+        "g_rand_arr", [float(x) for x in rs.g_rand_arr((2, 2)).ravel()]
     )
     rs = q.RngState("test-rng")
     q.json_results_append(

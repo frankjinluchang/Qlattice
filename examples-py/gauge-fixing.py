@@ -240,10 +240,19 @@ def check_unitarity_error_accepted_types(fname, geo, rs):
     q.json_results_append(
         f"{fname}: unitarity GaugeField(same matrices)", err_gf_scaled, 1.0e-10
     )
-    q.json_results_append(f"{fname}: unitarity random transform", err_gt_rand, 1.0e-10)
-    q.json_results_append(f"{fname}: unitarity fixed field", err_fixed_field, 1.0e-10)
+    # These three are round-off level (1e-15), so they cannot be compared with a
+    # relative ``eps``: a last-bit difference is a large *relative* difference.
+    # The bounds are already asserted above, so record the outcome, not the
+    # value (AGENTS.md: only floating-point results go through the eps form).
     q.json_results_append(
-        f"{fname}: unitarity fixed transform", err_fixed_transform, 1.0e-10
+        f"{fname}: unitarity random transform <= 1e-10 = {err_gt_rand <= 1.0e-10}"
+    )
+    q.json_results_append(
+        f"{fname}: unitarity fixed field <= 1e-10 = {err_fixed_field <= 1.0e-10}"
+    )
+    q.json_results_append(
+        f"{fname}: unitarity fixed transform <= 1e-10 = "
+        f"{err_fixed_transform <= 1.0e-10}"
     )
     q.json_results_append(f"{fname}: unitarity rejected types = {rejected}")
 

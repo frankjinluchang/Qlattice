@@ -67,19 +67,13 @@
   1e-10
  ],
  [
-  "main: unitarity random transform",
-  8.881784197001252e-16,
-  1e-10
+  "main: unitarity random transform <= 1e-10 = True"
  ],
  [
-  "main: unitarity fixed field",
-  8.548717289613705e-15,
-  1e-10
+  "main: unitarity fixed field <= 1e-10 = True"
  ],
  [
-  "main: unitarity fixed transform",
-  5.10702591327572e-15,
-  1e-10
+  "main: unitarity fixed transform <= 1e-10 = True"
  ],
  [
   "main: unitarity rejected types = 3"
