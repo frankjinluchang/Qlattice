@@ -14,6 +14,7 @@ py_files = files(
   '__main__.py',
   'mpi_utils.py',
   'field_analysis.py',
+  'cgfhmc.py',
   'hmc_utils.py',
   'field_base_utils.py',
   'field_utils_utils.py',

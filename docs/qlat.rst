@@ -39,6 +39,7 @@ qlat
    qlat/qlat_gauge_fixing.md
 
    qlat/qlat_hmc.md
+   qlat/qlat_cgfhmc.md
 
    qlat/qlat_field_utils.md
 

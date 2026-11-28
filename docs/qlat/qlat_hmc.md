@@ -48,6 +48,11 @@ indicate node-local (non-communicating) quantities.
 
 ---
 
+**See also.** `qlat.cgfhmc` builds on this module to provide Canonical
+Gauge-Fixed HMC (CGFHMC), which fixes the Landau gauge and partially refreshes
+the momentum after every MD step — see
+[`qlat_cgfhmc.md`](qlat_cgfhmc.md).
+
 ## `GaugeMomentum` Class
 
 `GaugeMomentum` is a subclass of `FieldColorMatrix` with fixed multiplicity 4

@@ -42,6 +42,8 @@ from .inverter_utils import *
 
 from .hmc_utils import *
 
+from .cgfhmc import *
+
 from .mpi_utils import *
 
 from .scalar_action import *
