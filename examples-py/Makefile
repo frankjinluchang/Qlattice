@@ -120,6 +120,7 @@ tests = \
 		hmc-pure-gauge-symmetric.log \
 		hmc-pure-gauge-fa-sym.log \
 		hmc-pure-gauge-fgf.log \
+		cgfhmc.log \
 		hmc-pions.log \
 		gf-utils.log \
 		gf-utils-2.log \

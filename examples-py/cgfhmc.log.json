@@ -1,0 +1,141 @@
+[
+ [
+  "cgfhmc helpers: k grid shape = True"
+ ],
+ [
+  "cgfhmc helpers: k^2 consistent = True"
+ ],
+ [
+  "cgfhmc helpers: k folded at Nyquist = True"
+ ],
+ [
+  "cgfhmc helpers: c clipped to [0,1] = True"
+ ],
+ [
+  "cgfhmc helpers: c is even = True"
+ ],
+ [
+  "cgfhmc helpers: c is float64 C-contiguous = True"
+ ],
+ [
+  "cgfhmc limits: c=0 is a strict no-op = True"
+ ],
+ [
+  "cgfhmc limits: c=0 draws no random number = True"
+ ],
+ [
+  "cgfhmc limits: c=1 resamples completely = True"
+ ],
+ [
+  "cgfhmc limits: uniform c matches explicit law = True"
+ ],
+ [
+  "cgfhmc limits: uniform c uses the real-space path = True"
+ ],
+ [
+  "cgfhmc guard: is_reverse_test raises NotImplementedError = True"
+ ],
+ [
+  "cgfhmc guard: the error names the irreversibility = True"
+ ],
+ [
+  "cgfhmc uniform: mean |delta_h|",
+  64.47568603417017,
+  1e-08
+ ],
+ [
+  "cgfhmc uniform: mean |delta_h_accept|",
+  1.2791778061879313,
+  1e-08
+ ],
+ [
+  "cgfhmc uniform: dK_sum mean abs",
+  64.47500982533259,
+  1e-08
+ ],
+ [
+  "cgfhmc uniform: plaq mean",
+  0.5927972565363646,
+  1e-10
+ ],
+ [
+  "cgfhmc uniform: c_min",
+  0.4358898943540674,
+  1e-08
+ ],
+ [
+  "cgfhmc uniform: c_max",
+  0.4358898943540674,
+  1e-08
+ ],
+ [
+  "cgfhmc uniform: c_mean",
+  0.43588989435406744,
+  1e-08
+ ],
+ [
+  "cgfhmc uniform: c is uniform = True (refresh path = real-space (uniform c))"
+ ],
+ [
+  "cgfhmc uniform: refresh applied on every step = True (30 of 30 MD steps)"
+ ],
+ [
+  "cgfhmc uniform: accepted = 6/10"
+ ],
+ [
+  "cgfhmc uniform: gauge fixations = 30"
+ ],
+ [
+  "cgfhmc uniform: fix steps converged = 0/30"
+ ],
+ [
+  "cgfhmc mode: mean |delta_h|",
+  50.20459827892446,
+  1e-08
+ ],
+ [
+  "cgfhmc mode: mean |delta_h_accept|",
+  1.9624407947756026,
+  1e-08
+ ],
+ [
+  "cgfhmc mode: dK_sum mean abs",
+  49.18441321918844,
+  1e-08
+ ],
+ [
+  "cgfhmc mode: plaq mean",
+  0.5988693633687923,
+  1e-10
+ ],
+ [
+  "cgfhmc mode: c_min",
+  0.2,
+  1e-08
+ ],
+ [
+  "cgfhmc mode: c_max",
+  0.4358898943540674,
+  1e-08
+ ],
+ [
+  "cgfhmc mode: c_mean",
+  0.4211467759569383,
+  1e-08
+ ],
+ [
+  "cgfhmc mode: c is uniform = False (refresh path = fourier (mode-dependent c))"
+ ],
+ [
+  "cgfhmc mode: refresh applied on every step = True (30 of 30 MD steps)"
+ ],
+ [
+  "cgfhmc mode: accepted = 4/10"
+ ],
+ [
+  "cgfhmc mode: gauge fixations = 30"
+ ],
+ [
+  "cgfhmc mode: fix steps converged = 0/30"
+ ]
+]
