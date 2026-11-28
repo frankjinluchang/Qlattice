@@ -135,6 +135,22 @@ per-sweep step `gt_step`.  The functional, the divergence and the unitarity
 error are reduced with `field_glb_sum`/`field_glb_max`, so all nodes stay in
 sync.  Site loops are in C++ (`qacc_for`); there is no Python loop over sites.
 
+Two sweeps' worth of passes are fused, which matters on a GPU where every
+`qacc_for` is a kernel launch followed by a device synchronisation:
+
+- the per-site functional and divergence densities are evaluated in **one**
+  pass, held as the two components of a single `Field<RealD>`, and reduced by
+  **one** `field_glb_sum`, so the whole reduction is a single host sum plus a
+  single `MPI_Allreduce` instead of two of each;
+- the four link updates of [Eq. (5)](#algorithm) run as **one** pass with the
+  direction loop inside it.  The four directions are independent, because a
+  link's update reads only `g(x)`, `U_mu(x)` and the read-only expanded
+  `g(x+mu)`, so fusing them changes neither the update order nor the result.
+
+A sweep therefore issues 6 `qacc_for` passes and 1 reduction instead of 10
+passes and 2 reductions; the values are unchanged bit for bit, including the
+per-sweep `functional_list` and `divergence_list` histories.
+
 Peak memory is the working copy plus `gt` plus `D`'s halo: at `64^3 * 128`
 that is **+5.012 GiB** over the previous implementation (about `+0.28x` a
 `GaugeField`), and **less** in absolute terms than the old peak because the
