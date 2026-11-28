@@ -207,23 +207,25 @@ python3 -m unittest discover -s qlat-ref/tests -t qlat-ref -v
 The historical `python3 -m qlat_ref.tests` entry point still works: it is a
 thin shim that discovers and runs the same suite.
 
-The default suite is **283 tests** (239 run + 44 skipped without a live `qlat`)
-and needs only `numpy`: **14.8 s** with the parallel default, 26.8 s with
-`-n 0`, 20.2 s with `unittest discover`.  The 5 long multi-trajectory tests in
-`tests/test_hmc_slow.py` are skipped unless `QLAT_REF_SLOW=1` is set
-(`62.8 s` parallel / `87.9 s` serial), and the parity tests against a live
-`qlat` (`tests/test_qlat_parity.py`, `tests/test_interface_parity.py`) skip
-themselves when `qlat` is not importable.  `python -O` is also supported.  Run
-the slow module explicitly with:
+The default suite is **359 tests** (295 run + 64 skipped without a live `qlat`)
+and needs only `numpy`: **15.2 s** with the parallel default, 37.0 s with
+`-n 0`, 37.0 s with `unittest discover`.  The 11 long multi-trajectory tests in
+`tests/test_hmc_slow.py` and `tests/test_cgfhmc_slow.py` are skipped unless
+`QLAT_REF_SLOW=1` is set (`62.6 s` parallel / `116.9 s` serial), and the parity
+tests against a live `qlat` (`tests/test_qlat_parity.py`,
+`tests/test_interface_parity.py`) skip themselves when `qlat` is not
+importable -- or when the installed `qlat` predates the module being compared.
+`python -O` is also supported.  Run the slow modules explicitly with:
 
 ```bash
 cd qlat-ref
-QLAT_REF_SLOW=1 python3 -m pytest tests/test_hmc_slow.py -v
+QLAT_REF_SLOW=1 python3 -m pytest tests/test_hmc_slow.py tests/test_cgfhmc_slow.py -v
 ```
 
 
 The docs are `docs/qlat-ref/*.md` (overview, types, gauge, observables, rng,
-hmc), registered in `docs/qlat-ref.rst`; every module docstring names its page.
+hmc, cgfhmc), registered in `docs/qlat-ref.rst`; every module docstring names
+its page.
 
 ### Run a new program with the nix-built environment
 

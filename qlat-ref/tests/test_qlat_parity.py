@@ -361,6 +361,234 @@ class TestFieldValueParity(unittest.TestCase):
 ### -------------------------------------------------------------------
 
 @unittest.skipUnless(HAS_QLAT, _NO_QLAT_REASON)
+class TestCgfhmcParity(unittest.TestCase):
+    """The CGFHMC layer must be qlat's, value for value.\n
+    Every comparison here is between two *independent* implementations of the
+    same Fourier construction: qlat's distributed ``mk_fft`` and this package's
+    ``numpy.fft``.  A wrong axis order, folding convention or FFT normalisation
+    would show up immediately, so the values are compared numerically rather
+    than only structurally.\n
+    The golden vectors in ``tests/data/cgfhmc-vectors.json`` already pin the
+    whole trajectory; what they cannot pin is the ``c(k)`` *grid*, which is why
+    the helpers are compared directly as well.
+    """
+
+    geo = None
+    geo_ref = None
+
+    @classmethod
+    def setUpClass(cls):
+        import qlat_utils as qu
+        #
+        cls.total_site = list(TOTAL_SITE)
+        cls.geo = q.Geometry(qu.Coordinate(cls.total_site))
+        cls.geo_ref = qr.Geometry(qr.Coordinate(cls.total_site))
+
+    def get_cgk(self, name):
+        """Return the qlat and qlat_ref implementations of ``name``."""
+        if not hasattr(q, name) or not hasattr(qr, name):
+            self.skipTest(f"the installed qlat has no {name}: needs a rebuild")
+        return getattr(q, name), getattr(qr, name)
+
+    def test_k_vectors_match(self):
+        q_fn, ref_fn = self.get_cgk("k_vectors")
+        self.assertLess(
+            float(np.max(np.abs(q_fn(self.geo) - ref_fn(self.geo_ref)))), 1e-15
+        )
+
+    def test_k_squared_match(self):
+        q_fn, ref_fn = self.get_cgk("k_squared")
+        self.assertLess(
+            float(np.max(np.abs(q_fn(self.geo) - ref_fn(self.geo_ref)))), 1e-14
+        )
+
+    def test_resolve_k_cut_matches(self):
+        q_fn, ref_fn = self.get_cgk("resolve_k_cut")
+        for units in (0, 1, 2, 3.5):
+            with self.subTest(units=units):
+                self.assertEqual(
+                    float(q_fn(self.geo, units)), float(ref_fn(self.geo_ref, units))
+                )
+
+    def test_regularize_c_field_matches(self):
+        q_fn, ref_fn = self.get_cgk("regularize_c_field")
+        rng = np.random.default_rng(12345)
+        # In range, out of range and non-finite entries in one array: the clip,
+        # the evenness projection and the NaN policy must all agree.
+        raw = rng.uniform(-0.5, 1.5, size=TOTAL_SITE)
+        raw[0, 0, 0, 0] = np.nan
+        raw[1, 1, 1, 1] = 2.5
+        raw[0, 1, 0, 1] = -0.25
+        got = q_fn(raw.copy(), allow_nan="zero")
+        expected = ref_fn(raw.copy(), allow_nan="zero")
+        self.assertLess(float(np.max(np.abs(got - expected))), 1e-15)
+
+    def test_generate_c_field_matches(self):
+        q_fn, ref_fn = self.get_cgk("generate_c_field")
+        q_cut, ref_cut = self.get_cgk("resolve_k_cut")
+        threshold = float(q_cut(self.geo, 1))
+        expected_threshold = float(ref_cut(self.geo_ref, 1))
+        self.assertEqual(threshold, expected_threshold)
+        #
+        def func(kv):
+            return np.where(np.sum(kv**2, axis=0) <= threshold**2, 0.3, 0.95)
+        #
+        got = q_fn(self.geo, func)
+        expected = ref_fn(self.geo_ref, func)
+        self.assertLess(float(np.max(np.abs(got - expected))), 1e-15)
+
+    def test_partial_refresh_matches(self):
+        q_refresh, ref_refresh = self.get_cgk("partial_refresh_momentum_mode")
+        q_gen, ref_gen = self.get_cgk("generate_c_field")
+        q_cut, ref_cut = self.get_cgk("resolve_k_cut")
+        # Same c(k) on both sides, then the SAME momentum and the same RNG seed:
+        # any difference is the transform, not the inputs.
+        cut = float(q_cut(self.geo, 1))
+        c_q = q_gen(
+            self.geo, lambda kv: np.where(np.sum(kv**2, axis=0) <= cut**2, 0.4, 0.9)
+        )
+        c_ref = ref_gen(
+            self.geo_ref, lambda kv: np.where(np.sum(kv**2, axis=0) <= cut**2, 0.4, 0.9)
+        )
+        gm = q.GaugeMomentum(self.geo)
+        gm.set_rand(q.RngState(SEED + "-cgfhmc"), 1.0)
+        gm_ref = qr.GaugeMomentum(self.geo_ref)
+        gm_ref.set_rand(qr.RngState(SEED + "-cgfhmc"), 1.0)
+        applied, dk, info = q_refresh(gm, q.RngState(SEED + "-refresh"), c_q)
+        applied_ref, dk_ref, info_ref = ref_refresh(
+            gm_ref, qr.RngState(SEED + "-refresh"), c_ref
+        )
+        self.assertEqual(bool(applied), bool(applied_ref))
+        self.assertLess(
+            float(np.max(np.abs(np.asarray(gm) - np.asarray(gm_ref)))), 1e-12
+        )
+        self.assertAlmostEqual(dk, dk_ref, delta=1e-10)
+
+    def test_uniform_refresh_matches(self):
+        q_refresh, ref_refresh = self.get_cgk("partial_refresh_momentum_mode")
+        q_gen, ref_gen = self.get_cgk("generate_c_field")
+        c_q = q_gen(self.geo, lambda kv: 0.55)
+        c_ref = ref_gen(self.geo_ref, lambda kv: 0.55)
+        gm = q.GaugeMomentum(self.geo)
+        gm.set_rand(q.RngState(SEED + "-uniform"), 1.0)
+        gm_ref = qr.GaugeMomentum(self.geo_ref)
+        gm_ref.set_rand(qr.RngState(SEED + "-uniform"), 1.0)
+        q_refresh(gm, q.RngState(SEED + "-uniform-refresh"), c_q)
+        ref_refresh(gm_ref, qr.RngState(SEED + "-uniform-refresh"), c_ref)
+        self.assertLess(
+            float(np.max(np.abs(np.asarray(gm) - np.asarray(gm_ref)))), 1e-13
+        )
+
+    def test_reverse_test_message_matches(self):
+        # The wording is part of the contract: the two must raise the identical
+        # NotImplementedError text so a caller can match on it.
+        if not hasattr(q, "run_hmc_cgfhmc_pure_gauge"):
+            self.skipTest("the installed qlat has no run_hmc_cgfhmc_pure_gauge")
+        gf0 = q.GaugeField(self.geo)
+        gf0.set_unit()
+        gf_ref = qr.GaugeField(self.geo_ref)
+        gf_ref.set_unit()
+        c_q = q.generate_c_field(self.geo, lambda kv: 0.5)
+        c_ref = qr.generate_c_field(self.geo_ref, lambda kv: 0.5)
+        with self.assertRaises(NotImplementedError) as q_context:
+            q.run_hmc_cgfhmc_pure_gauge(
+                gf0,
+                q.GaugeAction(5.5, 0.0),
+                1,
+                q.RngState(SEED),
+                c_field=c_q,
+                is_reverse_test=True,
+            )
+        with self.assertRaises(NotImplementedError) as ref_context:
+            qr.run_hmc_cgfhmc_pure_gauge(
+                gf_ref,
+                qr.GaugeAction(5.5, 0.0),
+                1,
+                qr.RngState(SEED),
+                c_field=c_ref,
+                is_reverse_test=True,
+            )
+        self.assertEqual(str(q_context.exception), str(ref_context.exception))
+
+    def test_full_trajectory_matches_at_several_step_counts(self):
+        # Compare whole CGFHMC trajectories, not just the helper functions: the
+        # per-step gauge-fixing + refresh must sit at the SAME point inside the
+        # integrator in both drivers, and only a multi-step trajectory shows a
+        # difference in that schedule.
+        #
+        # This is not hypothetical: qlat's driver once hoisted one ``lam*dt``
+        # drift out of the step loop (a copy of run_hmc_evolve_pure_gauge's
+        # shape) while qlat_ref closed each step with the self-contained
+        # ``lam, (1-2*lam), lam`` sandwich. The two agreed at n_step=1 and
+        # diverged by O(10) in delta_h from n_step=2 on -- the helpers compared
+        # by the tests above all matched. Hence n_step > 1 here.
+        if not hasattr(q, "run_hmc_cgfhmc_pure_gauge"):
+            self.skipTest("the installed qlat has no run_hmc_cgfhmc_pure_gauge")
+        cut = float(q.resolve_k_cut(self.geo, 1))
+        #
+        # The two-zone profile exercises the Fourier refresh path; the uniform
+        # value is checked by the golden vectors in test_cgfhmc.py.
+        def func(kv):
+            return np.where(np.sum(kv**2, axis=0) <= cut**2, 0.2, 0.9)
+        #
+        c_q = q.generate_c_field(self.geo, func)
+        c_ref = qr.generate_c_field(self.geo_ref, func)
+        for n_step, md_time in ((2, 0.25), (3, 0.375), (8, 1.0)):
+            with self.subTest(n_step=n_step):
+                gf = q.GaugeField(self.geo)
+                gf.set_rand(q.RngState(SEED + "-cgfhmc-traj"), 0.3, 2)
+                gf.unitarize()
+                gf_ref = qr.GaugeField(self.geo_ref)
+                n = int(np.prod(TOTAL_SITE))
+                flat = np.asarray(gf).reshape((n, 4, qr.NC, qr.NC), order="F")
+                site_major = flat.reshape(
+                    tuple(TOTAL_SITE) + (4, qr.NC, qr.NC), order="F"
+                )
+                gf_ref = fld.get_field_from_array(
+                    np.moveaxis(site_major, -3, 0), self.geo_ref
+                )
+                info = {}
+                info_ref = {}
+                flag, delta_h = q.run_hmc_cgfhmc_pure_gauge(
+                    gf,
+                    q.GaugeAction(5.5, 0.0),
+                    1,
+                    q.RngState(SEED + "-cgfhmc-traj-run"),
+                    c_field=c_q,
+                    n_step=n_step,
+                    md_time=md_time,
+                    is_always_accept=True,
+                    info_out=info,
+                )
+                flag_ref, delta_h_ref = qr.run_hmc_cgfhmc_pure_gauge(
+                    gf_ref,
+                    qr.GaugeAction(5.5, 0.0),
+                    1,
+                    qr.RngState(SEED + "-cgfhmc-traj-run"),
+                    c_field=c_ref,
+                    n_step=n_step,
+                    md_time=md_time,
+                    is_always_accept=True,
+                    info_out=info_ref,
+                )
+                self.assertEqual(int(flag), int(flag_ref))
+                # Absolute tolerances: delta_h is O(V * md_time) here (hundreds
+                # at 2^4), so 1e-9 is ~1e-12 relative and far below the O(10)
+                # signature of a wrong insertion point.
+                self.assertAlmostEqual(delta_h, delta_h_ref, delta=1e-9)
+                self.assertAlmostEqual(info["dK_sum"], info_ref["dK_sum"], delta=1e-9)
+                self.assertEqual(info["n_fix"], info_ref["n_fix"])
+                self.assertLess(
+                    float(np.max(np.abs(np.asarray(gf) - np.asarray(gf_ref)))),
+                    1e-12,
+                )
+                self.assertAlmostEqual(
+                    float(gf.plaq()), float(gf_ref.plaq()), delta=1e-12
+                )
+
+### -------------------------------------------------------------------
+
+@unittest.skipUnless(HAS_QLAT, _NO_QLAT_REASON)
 class TestGaugeFixingParity(unittest.TestCase):
     """The fixing paths must converge to the same field as qlat's."""
 

@@ -80,6 +80,7 @@ except Exception as exc:  # noqa: BLE001 - any import failure means "no qlat her
 # Shared function names: qlat_ref's exported name -> qlat's name.  They are the
 # same string everywhere, and the mapping exists so a future rename is one line.
 SHARED_FUNCTIONS = {
+    "c_field_from_file": "c_field_from_file",
     "fix_coulomb_gauge": "fix_coulomb_gauge",
     "fix_gauge": "fix_gauge",
     "fix_landau_gauge": "fix_landau_gauge",
@@ -88,11 +89,18 @@ SHARED_FUNCTIONS = {
     "get_unitarity_error": "get_unitarity_error",
     "gf_evolve": "gf_evolve",
     "gf_evolve_dual": "gf_evolve_dual",
+    "generate_c_field": "generate_c_field",
     "gf_hamilton_node": "gf_hamilton_node",
     "gm_apply_gauge_transformation": "gm_apply_gauge_transformation",
     "gm_evolve_fg_pure_gauge": "gm_evolve_fg_pure_gauge",
     "gm_hamilton_node": "gm_hamilton_node",
+    "k_squared": "k_squared",
+    "k_vectors": "k_vectors",
     "metropolis_accept": "metropolis_accept",
+    "partial_refresh_momentum_mode": "partial_refresh_momentum_mode",
+    "regularize_c_field": "regularize_c_field",
+    "resolve_k_cut": "resolve_k_cut",
+    "run_hmc_cgfhmc_pure_gauge": "run_hmc_cgfhmc_pure_gauge",
     "run_hmc_evolve_pure_gauge": "run_hmc_evolve_pure_gauge",
     "run_hmc_pure_gauge": "run_hmc_pure_gauge",
     "set_gm_force": "set_gm_force",
@@ -140,6 +148,7 @@ EXTRAS = {
 # modules are classified separately from the function extras.
 TOPIC_MODULES = {
     "base": "topic split of the reference package",
+    "cgfhmc": "mirrors qlat.cgfhmc",
     "field": "topic split of the reference package",
     "gauge": "backward-compatible facade (kept permanently, see AGENTS.md)",
     "gauge_action": "mirrors qlat.gauge_action",
@@ -359,6 +368,28 @@ DEVIATIONS = {
     "Geometry": "single process: node quantities are the global ones, no MPI",
     "metropolis_accept": "single process: no broadcast of flag/accept_prob",
     "run_hmc_pure_gauge": "single process: no glb_sum_double of delta_h",
+    "regularize_c_field": (
+        "same name, signature, clipping and evenness projection; qlat_ref's"
+        " last_report adds is_even next to qlat's diagnostics keys, and its"
+        " error messages carry a 'qlat_ref:' prefix"
+    ),
+    "generate_c_field": (
+        "same name, signature, always-regularized output and last_report keys;"
+        " the report also records total_site (qlat's does not)"
+    ),
+    "partial_refresh_momentum_mode": (
+        "same name, signature, (applied, dK, info) return, c=0 no-op with no"
+        " RNG draw, uniform fast path and Fourier path.  qlat_ref validates the"
+        " c(k) field itself (range/evenness/finiteness) so its info adds"
+        " is_even, max_asymmetry and n_site; every qlat key is present with the"
+        " same value.  Single process instead of a distributed FFT."
+    ),
+    "run_hmc_cgfhmc_pure_gauge": (
+        "same name, signature, defaults, in-place-on-accept semantics, dK"
+        " accounting and the identical NotImplementedError text for"
+        " is_reverse_test; single process instead of MPI, and no verbose line"
+        " unless qlat_ref.hmc_utils._VERBOSE is set"
+    ),
 }
 
 ### -------------------------------------------------------------------
@@ -684,7 +715,7 @@ class TestSharedFunctionSignatures(unittest.TestCase):
 class TestModuleSubsets(unittest.TestCase):
     """A mirrored topic module may only define what qlat's module defines."""
 
-    MIRRORED = ("hmc", "hmc_utils", "gauge_fixing", "gauge_action")
+    MIRRORED = ("hmc", "hmc_utils", "cgfhmc", "gauge_fixing", "gauge_action")
 
     def test_mirrored_modules_exist(self):
         missing = [name for name in self.MIRRORED if not hasattr(q, name)]

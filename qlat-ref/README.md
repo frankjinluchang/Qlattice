@@ -184,29 +184,29 @@ python3 -m unittest discover -s qlat-ref/tests -t qlat-ref -v
 The historical `python3 -m qlat_ref.tests` entry point still works as a thin
 shim around the same suite.
 
-**Timings** (13 files, 283 tests = 239 run + 44 skipped without a live `qlat`;
-8 workers on this 64-core host):
+**Timings** (16 test files, 359 tests = 295 run + 64 skipped without a live
+`qlat`; 8 workers on this 64-core host):
 
 | Invocation | Wall time |
 |---|---|
-| `pytest` (parallel, default) | **14.8 s** |
-| `pytest -n 0` (sequential) | 26.8 s |
-| `unittest discover` (sequential) | 20.2 s |
-| `pytest` with `QLAT_REF_SLOW=1` | 62.8 s |
-| `pytest -n 0` with `QLAT_REF_SLOW=1` | 87.9 s |
-| `python -O -m pytest` | 15.1 s |
+| `pytest` (parallel, default) | **15.2 s** |
+| `pytest -n 0` (sequential) | 37.0 s |
+| `unittest discover` (sequential) | 37.0 s |
+| `pytest` with `QLAT_REF_SLOW=1` | 62.6 s |
+| `pytest -n 0` with `QLAT_REF_SLOW=1` | 116.9 s |
+| `python -O -m pytest` | 15.9 s |
 
 The speedup is bounded by `tests/test_hmc_driver.py`, which alone takes 13.2 s
 and is a single file, so it cannot be split across workers: the parallel run can
 never beat that critical path.  `--dist loadfile` is what keeps the suite safe
 rather than maximally fast.
 
-5 tests (`tests/test_hmc_slow.py`, the long multi-trajectory statistics) are
-skipped unless `QLAT_REF_SLOW=1` is set:
+11 tests in the two opt-in slow modules are skipped unless `QLAT_REF_SLOW=1` is
+set (5 in `tests/test_hmc_slow.py`, 6 in `tests/test_cgfhmc_slow.py`):
 
 ```bash
-QLAT_REF_SLOW=1 python3 -m pytest tests/test_hmc_slow.py -v
-QLAT_REF_SLOW=1 python3 -m unittest tests.test_hmc_slow -v
+QLAT_REF_SLOW=1 python3 -m pytest tests/test_hmc_slow.py tests/test_cgfhmc_slow.py -v
+QLAT_REF_SLOW=1 python3 -m unittest tests.test_hmc_slow tests.test_cgfhmc_slow -v
 ```
 
 The parity tests against a live `qlat` skip themselves when `qlat` is not
@@ -227,12 +227,18 @@ importable, so the suite needs only `numpy`:
 | `tests/test_hmc_integrator.py` | `gf_evolve`/`gf_evolve_dual`, the `c1` rectangle term, unitarity after evolution |
 | `tests/test_hmc_driver.py` | `metropolis_accept`, `gm_evolve_fg_pure_gauge`, `run_hmc_evolve_pure_gauge`, `run_hmc_pure_gauge`, reversibility and RNG-tree reproducibility |
 | `tests/test_hmc_slow.py` | long multi-trajectory statistics (**opt-in**: `QLAT_REF_SLOW=1`) |
+| `tests/test_cgfhmc.py` | the CGFHMC `c(k)` grid and its folding, the regularizer, the partial momentum refresh laws and the driver's `dK` accounting, against independently computed values and the golden chains in `tests/data/cgfhmc-vectors.json` |
+| `tests/test_cgfhmc_slow.py` | CGFHMC ensemble stationarity, chain health, and the field/refresh invariants repeated on a larger lattice (**opt-in**: `QLAT_REF_SLOW=1`) |
 | `tests/test_qlat_parity.py` | numerical parity against a live `qlat` (skips without it) |
 | `tests/test_interface_parity.py` | names, signatures and type members against a live `qlat`, plus the subset rule and the declared extras/deviations (skips without it) |
 
 `tests/data/` holds the reference vectors (`rng-vectors.json`,
-`newtype-vectors.json`, `hmc-vectors.json`) and the scripts that regenerate
-them from the C++ implementation (`make-*.py`, `newtype-probe.cpp`).
+`newtype-vectors.json`, `hmc-vectors.json`, `cgfhmc-vectors.json`) and the
+scripts that regenerate them from the C++ implementation (`make-*.py`,
+`newtype-probe.cpp`).  `cgfhmc-vectors.json` records full CGFHMC chains
+(flags, `delta_h`, `dK_sum`, fixing iteration counts and plaquettes) written by
+the experimental implementation on a live `qlat`; the post-trajectory fields are
+checked in `tests/test_cgfhmc.py` as well.
 
 The nix derivation runs the same suite as an install check with
 `pytestCheckHook` + pytest-xdist (the same runner, so a pytest-only collection

@@ -47,3 +47,4 @@ long multi-trajectory tests are opt-in with `QLAT_REF_SLOW=1`.
    qlat-ref/qlat_observables.md
    qlat-ref/qlat_rng.md
    qlat-ref/qlat_hmc.md
+   qlat-ref/qlat_cgfhmc.md

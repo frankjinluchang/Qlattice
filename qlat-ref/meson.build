@@ -31,6 +31,7 @@ py3.install_sources(
   files(
     'qlat_ref/__init__.py',
     'qlat_ref/base.py',
+    'qlat_ref/cgfhmc.py',
     'qlat_ref/field.py',
     'qlat_ref/gauge.py',
     'qlat_ref/gauge_action.py',

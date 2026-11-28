@@ -17,6 +17,8 @@ module                  contents
 :mod:`qlat_ref.rng`     ``RngState``
 :mod:`qlat_ref.hmc`     pure-gauge HMC building blocks
 :mod:`qlat_ref.hmc_utils` the HMC trajectory drivers
+:mod:`qlat_ref.cgfhmc`  Canonical Gauge-Fixed HMC (mode-dependent
+                        partial momentum refresh)
 ======================  ================================================\n
 ``import qlat_ref`` re-exports the qlat-parity surface of every module, so the
 types (``Geometry``, ``Coordinate``, ``ColorMatrix``, ``FieldColorMatrix``,
@@ -77,6 +79,15 @@ from .hmc_utils import metropolis_accept
 from .hmc_utils import run_hmc_evolve_pure_gauge
 from .hmc_utils import run_hmc_pure_gauge
 
+from .cgfhmc import c_field_from_file
+from .cgfhmc import generate_c_field
+from .cgfhmc import k_squared
+from .cgfhmc import k_vectors
+from .cgfhmc import partial_refresh_momentum_mode
+from .cgfhmc import regularize_c_field
+from .cgfhmc import resolve_k_cut
+from .cgfhmc import run_hmc_cgfhmc_pure_gauge
+
 from .observables import get_coulomb_divergence_list
 from .observables import get_coulomb_functional_list
 from .observables import get_divergence_from_gradient
@@ -101,6 +112,7 @@ from .gauge_action import GaugeAction
 from .gauge_action import get_gauge_action
 
 from . import base
+from . import cgfhmc
 from . import field
 from . import gauge
 from . import gauge_action
@@ -126,6 +138,8 @@ __all__ = [
     "apply_gauge_transform",
     "apply_gauge_transform_to_momentum",
     "base",
+    "c_field_from_file",
+    "cgfhmc",
     "check_unitarity",
     "field",
     "fix_coulomb_gauge",
@@ -134,6 +148,7 @@ __all__ = [
     "gauge",
     "gauge_action",
     "gauge_fixing",
+    "generate_c_field",
     "get_array_from_field",
     "get_coulomb_divergence_list",
     "get_coulomb_functional_list",
@@ -166,10 +181,16 @@ __all__ = [
     "gm_hamilton_node",
     "hmc",
     "hmc_utils",
+    "k_squared",
+    "k_vectors",
     "mat",
     "metropolis_accept",
     "observables",
+    "partial_refresh_momentum_mode",
+    "regularize_c_field",
+    "resolve_k_cut",
     "rng",
+    "run_hmc_cgfhmc_pure_gauge",
     "run_hmc_evolve_pure_gauge",
     "run_hmc_pure_gauge",
     "set_gm_force",

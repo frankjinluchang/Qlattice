@@ -43,6 +43,7 @@ gauge_fixing.py  fix_gauge, fix_landau/coulomb     (base, field, mat, observable
 gauge_action.py  GaugeAction, action value         (mat)
 hmc.py           HMC building blocks               (base, field, gauge_action, mat)
 hmc_utils.py     the trajectory drivers            (field, hmc)
+cgfhmc.py        Canonical Gauge-Fixed HMC         (hmc, hmc_utils, gauge_fixing)
 gauge.py         the stable facade (re-exports)    (all of the above)
 __init__.py      the same names as gauge.py, plus every topic module
 tests.py         historical shim: `python3 -m qlat_ref.tests`
@@ -59,6 +60,7 @@ tests.py         historical shim: `python3 -m qlat_ref.tests`
 | `qlat_ref.rng` | `RngState` |
 | `qlat_ref.hmc` | `set_rand_gauge_momentum`, `gm_hamilton_node`, `gf_hamilton_node`, `set_gm_force`, `set_gm_force_dual`, `gf_evolve`, `gf_evolve_dual`, `gm_apply_gauge_transformation` |
 | `qlat_ref.hmc_utils` | `metropolis_accept`, `gm_evolve_fg_pure_gauge`, `run_hmc_evolve_pure_gauge`, `run_hmc_pure_gauge` |
+| `qlat_ref.cgfhmc` | `k_vectors`, `k_squared`, `resolve_k_cut`, `regularize_c_field`, `generate_c_field`, `c_field_from_file`, `partial_refresh_momentum_mode`, `run_hmc_cgfhmc_pure_gauge` |
 | `qlat_ref.gauge` | the facade: every name above except the HMC ones, plus the compatibility wrappers whose `dirs` arguments have defaults |
 
 `import qlat_ref` re-exports the names of every topic module, and also binds the
@@ -204,14 +206,15 @@ The reasoning, the reproductions and the upstream status of every underlying
 
 ## Self-Checks
 
-The suite is 283 standard-library `unittest` tests.  It runs fastest under
+The suite is 359 standard-library `unittest` tests (295 run + 64 skipped
+without a live `qlat`).  It runs fastest under
 **pytest + pytest-xdist**, whose settings live in `qlat-ref/pyproject.toml`
 (`[tool.pytest.ini_options]`), so the command needs no flags:
 
 ```bash
 cd qlat-ref
-python3 -m pytest                 # 14.8 s, -n auto --maxprocesses=8 --dist loadfile
-python3 -m pytest -n 0            #  26.8 s, one interpreter (debugging)
+python3 -m pytest                 # 15.2 s, -n auto --maxprocesses=8 --dist loadfile
+python3 -m pytest -n 0            #  37.0 s, one interpreter (debugging)
 ```
 
 pytest and pytest-xdist are a **test extra** (`pip install -e '.[test]'`), never
@@ -225,7 +228,7 @@ fallback when the test extra is not installed:
 
 ```bash
 cd qlat-ref
-python3 -m unittest discover -s tests -t . -v     # 20.2 s
+python3 -m unittest discover -s tests -t . -v     # 37.0 s
 ```
 
 The suite needs only `numpy`.  The long multi-trajectory statistics are opt-in
@@ -233,8 +236,9 @@ and are the one part that still costs a minute:
 
 ```bash
 cd qlat-ref
-QLAT_REF_SLOW=1 python3 -m pytest                 # 62.8 s (87.9 s with -n 0)
+QLAT_REF_SLOW=1 python3 -m pytest                 # 62.6 s (116.9 s with -n 0)
 QLAT_REF_SLOW=1 python3 -m pytest tests/test_hmc_slow.py -v
+QLAT_REF_SLOW=1 python3 -m pytest tests/test_cgfhmc_slow.py -v
 ```
 
 `python -O` is supported as well: no test depends on a bare `assert`, and
@@ -254,3 +258,4 @@ tests skip.
 | [`qlat_observables.md`](qlat_observables.md) | functionals, divergences, Coulomb slices and unitarity |
 | [`qlat_rng.md`](qlat_rng.md) | `RngState` and the reference vectors |
 | [`qlat_hmc.md`](qlat_hmc.md) | the pure-gauge HMC: Hamiltonian, force, integrator and drivers |
+| [`qlat_cgfhmc.md`](qlat_cgfhmc.md) | Canonical Gauge-Fixed HMC: gauge fixing per MD step and the mode-dependent partial momentum refresh |
